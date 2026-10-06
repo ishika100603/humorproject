@@ -29,7 +29,12 @@ async function CaptionList() {
 export default function Home() {
     return (
         <main className="mx-auto max-w-2xl p-6">
-            <h1 className="mb-6 text-3xl font-bold">Captions</h1>
+            <div className="mb-6 flex items-center justify-between">
+                <h1 className="text-3xl font-bold">Captions</h1>
+                <a href="/profile" className="rounded-lg border px-4 py-2 text-sm hover:bg-gray-50">
+                    My profile
+                </a>
+            </div>
             <Suspense fallback={<p>Loading captions…</p>}>
                 <CaptionList />
             </Suspense>
