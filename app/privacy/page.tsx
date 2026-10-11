@@ -31,7 +31,9 @@ export default function PrivacyPage() {
               <h2 className="text-lg font-bold">What we collect</h2>
               <ul className="mt-2 list-disc space-y-1 pl-5">
                 <li>
-                  From Google sign-in: your email address and Google account ID.
+                  From sign-in: your email address, plus your Google account ID
+                  if you use Google. Passwords are handled by our login provider
+                  and stored encrypted, never in plain text.
                 </li>
                 <li>
                   What you add: your first and last name and profile photo (on

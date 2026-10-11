@@ -361,7 +361,7 @@ export default function CaptionApp() {
               <a href="/login" className="font-semibold text-teal underline">
                 Log in
               </a>{" "}
-              with Google to post photos and vote.
+              with any email or Google account to post photos and vote.
             </div>
           )}
 
