@@ -4,17 +4,17 @@ import { createClient } from "@/lib/supabase/server";
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 
 // The prompt is written for our target user and is saved with every caption.
-const BASE_PROMPT = `You write captions for "Caption the City", a site where Columbia students upload campus photos and vote on AI captions.
+const BASE_PROMPT = `You write captions for "At 116 & Broadway", a site where Columbia students upload campus photos and vote on AI captions.
 Our typical user is a Columbia junior who is active on Sidechat (the anonymous campus app) and knows the campus inside jokes.
-Write 3 short captions for this photo that would get upvoted on Columbia's Sidechat.
+Write 1 short caption for this photo that would get upvoted on Columbia's Sidechat.
 Rules:
-- Each caption is under 20 words.
+- Keep it under 20 words.
 - Use specific details you can actually see in the photo.
 - Use Columbia references only when they fit naturally, for example Butler, Low Steps, John Jay, JJ's, Ferris, Lerner, the Core, Lit Hum, the housing lottery, Barnard, the 1 train, Morningside.
-- Mix styles: one dry observation, one in Sidechat voice (lowercase, deadpan), one about junior-year life (midterms, recruiting, housing).
+- Pick whichever style is funniest for this photo: a dry observation, Sidechat voice (lowercase, deadpan), or junior-year life (midterms, recruiting, housing).
 - Never use em dashes. Use commas or periods instead.
 - Be playful, never cruel: no jokes about people's looks or identity, no real named students, no slurs, nothing sexual.
-Return only a JSON array of 3 strings.`;
+Return only a JSON array with exactly 1 string.`;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -111,7 +111,7 @@ export async function POST(request: Request) {
         // No em or en dashes in captions
         .map((c) => c.replace(/\s*[\u2014\u2013]\s*/g, ", "))
         .filter(Boolean)
-        .slice(0, 3);
+        .slice(0, 1);
     }
   } catch {
     captions = [];

@@ -1,5 +1,5 @@
-import CaptionApp from "./caption-app";
+import Landing from "./landing";
 
 export default function Home() {
-  return <CaptionApp />;
+  return <Landing />;
 }

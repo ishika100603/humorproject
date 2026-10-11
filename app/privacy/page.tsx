@@ -1,34 +1,34 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy | Caption the City",
+  title: "Privacy | At 116 & Broadway",
 };
 
 export default function PrivacyPage() {
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-8">
       <nav className="mb-4">
-        <a href="/" className="text-sm font-semibold underline">
+        <a href="/feed" className="text-sm font-normal underline">
           Back to captions
         </a>
       </nav>
 
       <div className="mosaic">
         <div className="mosaic-field px-6 py-7">
-          <h1 className="condensed text-4xl font-extrabold uppercase leading-none">
+          <h1 className="text-xl font-medium leading-none">
             Privacy policy
           </h1>
           <p className="mt-2 text-sm text-ink/70">Last updated October 11, 2026</p>
 
           <div className="mt-6 grid gap-5 leading-relaxed">
             <p>
-              Caption the City is a student project for a Columbia University
+              At 116 &amp; Broadway is a student project for a Columbia University
               course. This page explains what the app collects and how it is
               used.
             </p>
 
             <section>
-              <h2 className="text-lg font-bold">What we collect</h2>
+              <h2 className="text-base font-medium">What we collect</h2>
               <ul className="mt-2 list-disc space-y-1 pl-5">
                 <li>
                   From sign-in: your email address, plus your Google account ID
@@ -44,7 +44,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-bold">How it is used</h2>
+              <h2 className="text-base font-medium">How it is used</h2>
               <ul className="mt-2 list-disc space-y-1 pl-5">
                 <li>To log you in and keep your profile and votes tied to you.</li>
                 <li>
@@ -60,7 +60,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-bold">Where it is stored</h2>
+              <h2 className="text-base font-medium">Where it is stored</h2>
               <p className="mt-2">
                 Data is stored with Supabase (database and file storage) and the
                 site is hosted on Vercel. We don&apos;t sell your data or use it
@@ -69,7 +69,7 @@ export default function PrivacyPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-bold">Deleting your data</h2>
+              <h2 className="text-base font-medium">Deleting your data</h2>
               <p className="mt-2">
                 Email{" "}
                 <a href="mailto:ia2630@columbia.edu" className="underline">

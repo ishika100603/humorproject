@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/lib/toast";
+import { LogBox } from "../art";
 
 type Profile = {
   id: string;
@@ -18,6 +20,7 @@ export default function ProfilePage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [status, setStatus] = useState("");
+  const [leaving, setLeaving] = useState<"" | "in" | "rolling">("");
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -59,9 +62,11 @@ export default function ProfilePage() {
       .eq("id", profile.id);
     if (error) {
       setStatus(error.message);
+      toast("error", "Didn't save", `${error.message}. Try again, or email ia2630@columbia.edu.`);
     } else {
       setProfile({ ...profile, ...updates });
       setStatus("Name saved.");
+      toast("success", "Approved!", "Your name is saved.");
     }
   };
 
@@ -80,6 +85,7 @@ export default function ProfilePage() {
       .upload(path, file);
     if (uploadError) {
       setStatus(uploadError.message);
+      toast("error", "Photo didn't upload", `${uploadError.message}. Try a JPG or PNG under 5 MB.`);
       setUploading(false);
       return;
     }
@@ -92,18 +98,24 @@ export default function ProfilePage() {
 
     if (error) {
       setStatus(error.message);
+      toast("error", "Didn't save", `${error.message}. Try again, or email ia2630@columbia.edu.`);
     } else {
       setProfile({ ...profile, avatar_url: data.publicUrl });
       setStatus("Photo updated.");
+      toast("success", "Approved!", "Looking good. Photo updated.");
     }
     setUploading(false);
   };
 
   const signOut = async () => {
+    setLeaving("in");
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/");
-    router.refresh();
+    setTimeout(() => setLeaving("rolling"), 250);
+    setTimeout(() => {
+      router.push("/");
+      router.refresh();
+    }, 1500);
   };
 
   if (!profile)
@@ -111,10 +123,21 @@ export default function ProfilePage() {
 
   const needsName = !profile.first_name || !profile.last_name;
 
+  if (leaving)
+    return (
+      <main className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#cfe8dc]">
+        <p className="text-xl font-medium tracking-[0.15em] text-[#1d2a3a]">LOG OUT</p>
+        <div className="mt-6 h-40 w-[min(360px,80vw)]">
+          <LogBox state={leaving === "rolling" ? "rolling" : "in"} />
+        </div>
+        <p className="mt-4 text-[#1d2a3a]">See you back at 116 &amp; Broadway.</p>
+      </main>
+    );
+
   return (
     <main className="mx-auto w-full max-w-md px-4 py-8">
       <nav className="mb-4 flex items-center justify-between">
-        <a href="/" className="text-sm font-semibold underline">
+        <a href="/feed" className="text-sm font-normal underline">
           Back to captions
         </a>
         <button onClick={signOut} className="text-sm underline">
@@ -124,7 +147,7 @@ export default function ProfilePage() {
 
       <div className="mosaic">
         <div className="mosaic-field px-6 py-7">
-          <h1 className="condensed text-center text-4xl font-extrabold uppercase leading-none">
+          <h1 className="text-center text-xl font-medium leading-none">
             Your profile
           </h1>
           <p className="mt-2 text-center text-sm text-ink/70">
@@ -132,7 +155,7 @@ export default function ProfilePage() {
           </p>
 
           {needsName && (
-            <p className="mt-5 rounded-md border-2 border-mustard bg-mustard/15 p-3 text-sm">
+            <p className="mt-5 rounded-md border border-mustard bg-mustard/15 p-3 text-sm">
               Add your first and last name to finish setting up your account.
             </p>
           )}
@@ -142,14 +165,14 @@ export default function ProfilePage() {
               <img
                 src={profile.avatar_url}
                 alt="Your profile photo"
-                className="h-24 w-24 rounded-full border-2 border-ink object-cover"
+                className="h-24 w-24 rounded-full border border-ink object-cover"
               />
             ) : (
-              <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed border-ink/40 bg-grout text-sm">
+              <div className="flex h-24 w-24 items-center justify-center rounded-full border border-dashed border-ink/40 bg-grout text-sm">
                 No photo
               </div>
             )}
-            <label className="cursor-pointer rounded-md border-2 border-ink px-4 py-2 text-sm font-semibold hover:bg-ink hover:text-white">
+            <label className="cursor-pointer rounded-md border border-ink px-4 py-2 text-sm font-normal hover:bg-ink hover:text-white">
               {uploading ? "Uploading photo…" : profile.avatar_url ? "Change photo" : "Upload photo"}
               <input
                 type="file"
@@ -164,24 +187,24 @@ export default function ProfilePage() {
           <form onSubmit={saveNames} className="mt-6 grid gap-4">
             <p className="text-sm text-ink/70">{profile.email}</p>
             <label className="grid gap-1">
-              <span className="text-sm font-semibold">First name</span>
+              <span className="text-sm font-normal">First name</span>
               <input
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 autoComplete="given-name"
-                className="rounded-md border-2 border-ink/30 bg-white px-3 py-2 focus:border-teal"
+                className="rounded-md border border-ink/30 bg-white px-3 py-2 focus:border-teal"
               />
             </label>
             <label className="grid gap-1">
-              <span className="text-sm font-semibold">Last name</span>
+              <span className="text-sm font-normal">Last name</span>
               <input
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 autoComplete="family-name"
-                className="rounded-md border-2 border-ink/30 bg-white px-3 py-2 focus:border-teal"
+                className="rounded-md border border-ink/30 bg-white px-3 py-2 focus:border-teal"
               />
             </label>
-            <button className="rounded-md bg-teal px-4 py-3 font-bold text-white hover:bg-ink">
+            <button className="rounded-md bg-teal px-4 py-3 font-medium text-white hover:bg-ink">
               Save name
             </button>
             {status && (

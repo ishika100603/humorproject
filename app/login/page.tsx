@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { ANNOUNCEMENTS } from "@/lib/jokes";
+import { toast } from "@/lib/toast";
+import { LogBox } from "../art";
+import { GooglyEyes } from "../note-person";
 
 const CONTACT = "ia2630@columbia.edu";
 
@@ -37,6 +40,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState<"" | "google" | "email">("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [logState, setLogState] = useState<"hover" | "dropping">("hover");
   const [i, setI] = useState(0);
 
   useEffect(() => {
@@ -47,14 +51,17 @@ export default function LoginPage() {
   const google = async () => {
     setBusy("google");
     setError("");
+    setLogState("dropping");
+    await new Promise((r) => setTimeout(r, 600));
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) {
+      setLogState("hover");
       setBusy("");
-      setError(friendly(error.message));
+      { setError(friendly(error.message)); toast("error", "Foul!", friendly(error.message)); }
     }
   };
 
@@ -69,11 +76,15 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         setBusy("");
-        setError(friendly(error.message));
+        { setError(friendly(error.message)); toast("error", "Foul!", friendly(error.message)); }
         return;
       }
-      router.push("/");
-      router.refresh();
+      setLogState("dropping");
+      toast("success", "Approved!", "You're logged in.");
+      setTimeout(() => {
+        router.push("/feed");
+        router.refresh();
+      }, 800);
       return;
     }
 
@@ -84,10 +95,12 @@ export default function LoginPage() {
     });
     setBusy("");
     if (error) {
-      setError(friendly(error.message));
+      { setError(friendly(error.message)); toast("error", "Foul!", friendly(error.message)); }
       return;
     }
     if (data.session) {
+      setLogState("dropping");
+      toast("success", "Approved!", "Account created. Add your name next.");
       // New accounts go to the profile page to add a name
       router.push("/profile");
       router.refresh();
@@ -99,29 +112,25 @@ export default function LoginPage() {
 
   return (
     <main className="grid min-h-screen w-full lg:grid-cols-2">
-      <section className="flex flex-col justify-center gap-8 px-6 py-12 lg:px-16">
-        <div className="mosaic">
-          <div className="mosaic-field px-6 py-10 text-center">
-            <h1 className="condensed text-6xl font-extrabold uppercase leading-none tracking-tight xl:text-8xl">
-              Caption the City
-            </h1>
-            <p className="mt-4 text-lg">Columbia's campus, captioned by AI and ranked by you.</p>
-          </div>
+      <section className="flex flex-col items-center justify-center px-6 py-12 lg:px-16">
+        <div className="h-[clamp(140px,22vw,300px)] w-[clamp(260px,42vw,560px)]">
+          <GooglyEyes />
         </div>
-        <div className="rounded-md border-2 border-ink bg-ink px-5 py-4 text-white">
-          <p className="condensed text-sm font-bold uppercase text-mustard">Service announcement</p>
-          <p key={i} className="fade-in mt-1 text-lg leading-snug">
-            {ANNOUNCEMENTS[i % ANNOUNCEMENTS.length]}
-          </p>
-        </div>
+        <p className="hand mt-6 text-[clamp(18px,1.8vw,24px)] tracking-[0.2em]">At 116 &amp; Broadway</p>
+        <p key={i} className="fade-in mt-2 max-w-sm text-center text-sm text-ink/60">
+          {ANNOUNCEMENTS[i % ANNOUNCEMENTS.length]}
+        </p>
       </section>
 
       <section className="flex items-center justify-center bg-tile-face/80 px-6 py-12 lg:border-l-2 lg:border-ink">
         <div className="w-full max-w-sm">
-          <h2 className="condensed text-4xl font-extrabold uppercase">
+          <div className="mb-4 h-28 w-56">
+            <LogBox state={logState} />
+          </div>
+          <h2 className="text-xl font-medium">
             {mode === "login" ? "Log in" : "Create an account"}
           </h2>
-          <p className="mt-2 text-lg">to post photos, vote on captions and make the leaderboard.</p>
+          <p className="mt-2 text-base">to post photos, vote on captions and make the leaderboard.</p>
 
           <button
             onClick={google}
@@ -140,7 +149,7 @@ export default function LoginPage() {
 
           <form onSubmit={withEmail} className="grid gap-3">
             <label className="grid gap-1">
-              <span className="text-sm font-semibold">Email</span>
+              <span className="text-sm font-normal">Email</span>
               <input
                 type="email"
                 required
@@ -148,11 +157,11 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="rounded-md border-2 border-ink/30 bg-white px-3 py-2 focus:border-teal"
+                className="rounded-md border border-ink/30 bg-white px-3 py-2 focus:border-teal"
               />
             </label>
             <label className="grid gap-1">
-              <span className="text-sm font-semibold">Password</span>
+              <span className="text-sm font-normal">Password</span>
               <input
                 type="password"
                 required
@@ -161,12 +170,12 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={mode === "signup" ? "At least 6 characters" : ""}
-                className="rounded-md border-2 border-ink/30 bg-white px-3 py-2 focus:border-teal"
+                className="rounded-md border border-ink/30 bg-white px-3 py-2 focus:border-teal"
               />
             </label>
             <button
               disabled={!!busy}
-              className="mt-1 h-12 rounded-md bg-teal px-4 font-bold text-white hover:bg-ink disabled:opacity-60"
+              className="mt-1 h-11 rounded-md bg-ink px-4 text-sm text-white hover:bg-teal disabled:opacity-60"
             >
               {busy === "email" ? "One sec…" : mode === "login" ? "Log in" : "Create account"}
             </button>
@@ -180,19 +189,19 @@ export default function LoginPage() {
                 setError("");
                 setNotice("");
               }}
-              className="font-semibold text-teal underline"
+              className="font-normal text-teal underline"
             >
               {mode === "login" ? "Create an account" : "Log in"}
             </button>
           </p>
 
           {notice && (
-            <p className="mt-4 rounded-md border-2 border-teal bg-white p-3 text-sm" role="status">
+            <p className="mt-4 rounded-md border border-teal bg-white p-3 text-sm" role="status">
               {notice}
             </p>
           )}
           {error && (
-            <p className="mt-4 rounded-md border-2 border-brick bg-white p-3 text-sm text-brick" role="alert">
+            <p className="mt-4 rounded-md border border-brick bg-white p-3 text-sm text-brick" role="alert">
               {error}
             </p>
           )}
@@ -203,7 +212,7 @@ export default function LoginPage() {
           </p>
 
           <p className="mt-8 text-sm">
-            <a href="/" className="underline">
+            <a href="/feed" className="underline">
               Browse captions without logging in
             </a>
             <span className="mx-2" aria-hidden="true">|</span>

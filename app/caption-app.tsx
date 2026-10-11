@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { playSound } from "@/lib/sound";
+import { toast } from "@/lib/toast";
 import { ANNOUNCEMENTS, greeting } from "@/lib/jokes";
+import { UPDATES } from "@/lib/updates";
 import Tutorial from "./tutorial";
+import StickMan from "./stickman";
 
 const CONTACT = "ia2630@columbia.edu";
 
@@ -24,30 +27,43 @@ type FeedRow = {
 
 type Leader = { id: number; caption: string; image_url: string; score: number };
 
-// The feed order is frozen when the page loads (or when you switch tabs),
-// so cards never jump around while you are voting.
-type Slot = { url: string; ids: number[] };
-type Sort = "hot" | "new" | "top";
+// One sticky note per photo. The order is by date, so voting never moves notes.
+type Slot = { url: string; ids: number[]; newest: string };
 
-function buildOrder(rows: FeedRow[], sort: Sort): Slot[] {
+const NOTE_COLORS = ["#f6eebc", "#f3e9b0", "#f8f1c8", "#efe4a6"];
+
+function buildSlots(rows: FeedRow[]): Slot[] {
   const groups = new Map<string, FeedRow[]>();
   for (const r of rows) groups.set(r.image_url, [...(groups.get(r.image_url) ?? []), r]);
-  const list = [...groups.entries()].map(([url, rs]) => {
-    rs.sort((a, b) => Number(b.score) - Number(a.score) || b.id - a.id);
-    const newest = rs.reduce((m, r) => (r.created_at > m ? r.created_at : m), "");
-    const best = Math.max(...rs.map((r) => Number(r.score)));
-    const hours = (Date.now() - new Date(newest).getTime()) / 36e5;
-    const hot = (best + 1) / Math.pow(hours + 2, 1.5);
-    return { url, ids: rs.map((r) => r.id), newest, best, hot };
-  });
-  list.sort((a, b) =>
-    sort === "top"
-      ? b.best - a.best || b.newest.localeCompare(a.newest)
-      : sort === "hot"
-        ? b.hot - a.hot
-        : b.newest.localeCompare(a.newest)
-  );
-  return list.map(({ url, ids }) => ({ url, ids }));
+  return [...groups.entries()]
+    .map(([url, rs]) => ({
+      url,
+      ids: rs.sort((a, b) => a.id - b.id).map((r) => r.id),
+      newest: rs.reduce((m, r) => (r.created_at > m ? r.created_at : m), ""),
+    }))
+    .sort((a, b) => b.newest.localeCompare(a.newest));
+}
+
+// New York calendar date (as a UTC midnight Date) for a timestamp
+function nyDay(iso: string | Date) {
+  const s = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date(iso));
+  return new Date(`${s}T00:00:00Z`);
+}
+
+// Monday of the week, used to group notes
+function weekStart(iso: string | Date) {
+  const d = nyDay(iso);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d;
+}
+
+function weekLabel(start: Date, now: number) {
+  const thisWeek = weekStart(new Date(now)).getTime();
+  const diff = Math.round((thisWeek - start.getTime()) / (7 * 864e5));
+  const date = start.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  if (diff === 0) return `This week, from ${date}`;
+  if (diff === 1) return `Last week, from ${date}`;
+  return `Week of ${date}`;
 }
 
 function msUntilMidnightET() {
@@ -70,6 +86,12 @@ function formatCountdown(ms: number) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+function daysUntilMonday(now: number) {
+  const d = nyDay(new Date(now)).getUTCDay();
+  const n = (8 - d) % 7;
+  return n === 0 ? 7 : n;
+}
+
 function readLocalSeen(key: string): number[] {
   try {
     return JSON.parse(localStorage.getItem(key) ?? "[]");
@@ -82,8 +104,6 @@ export default function CaptionApp() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [rows, setRows] = useState<FeedRow[]>([]);
-  const [order, setOrder] = useState<Slot[]>([]);
-  const [sort, setSort] = useState<Sort>("hot");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [seenAtLoad, setSeenAtLoad] = useState<Set<number>>(new Set());
@@ -96,6 +116,8 @@ export default function CaptionApp() {
   const [tick, setTick] = useState(0);
   const [countdown, setCountdown] = useState("");
   const [hello, setHello] = useState("");
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [now, setNow] = useState<number | null>(null);
 
   const userRef = useRef<User | null>(null);
   const pendingSeen = useRef<Set<number>>(new Set());
@@ -129,6 +151,7 @@ export default function CaptionApp() {
     const { data, error } = await supabase.rpc("caption_feed");
     if (error) {
       setError(`Couldn't load captions (${error.message}). Refresh to try again, or email ${CONTACT}.`);
+      toast("error", "Feed didn't load", `Refresh to try again, or email ${CONTACT}.`);
       return null;
     }
     return (data ?? []) as FeedRow[];
@@ -154,7 +177,6 @@ export default function CaptionApp() {
       const data = await fetchFeed();
       if (data) {
         setRows(data);
-        setOrder(buildOrder(data, "hot"));
         loadLeaders(data);
       }
       setLoading(false);
@@ -162,7 +184,8 @@ export default function CaptionApp() {
 
     try {
       setSoundOn(localStorage.getItem("ctc-sound") !== "off");
-      if (!localStorage.getItem("ctc-tutorial-done")) setTutorial(true);
+      const tour = new URLSearchParams(window.location.search).has("tour");
+      if (tour || !localStorage.getItem("ctc-tutorial-done")) setTutorial(true);
     } catch {}
   }, [fetchFeed, loadLeaders]);
 
@@ -193,8 +216,8 @@ export default function CaptionApp() {
       (entries) => {
         for (const e of entries) {
           if (e.isIntersecting) {
-            const id = Number((e.target as HTMLElement).dataset.captionId);
-            if (id) pendingSeen.current.add(id);
+            const ids = ((e.target as HTMLElement).dataset.captionIds ?? "").split(",").map(Number);
+            ids.forEach((id) => id && pendingSeen.current.add(id));
           }
         }
       },
@@ -220,6 +243,7 @@ export default function CaptionApp() {
     const update = () => {
       setCountdown(formatCountdown(msUntilMidnightET()));
       setHello(greeting());
+      setNow(Date.now());
     };
     update();
     const a = setInterval(() => setTick((t) => t + 1), 7000);
@@ -231,12 +255,6 @@ export default function CaptionApp() {
   }, []);
 
   // ---------- actions ----------
-  const changeSort = (s: Sort) => {
-    playSound("tap");
-    setSort(s);
-    setOrder(buildOrder(rows, s));
-  };
-
   const toggleSound = () => {
     const next = !soundOn;
     setSoundOn(next);
@@ -259,21 +277,6 @@ export default function CaptionApp() {
     setRows(data);
     setArrivedIds((prev) => new Set([...prev, ...ids]));
     ids.forEach((id) => pendingSeen.current.add(id));
-    // Put the new photo first and keep everything else where it was
-    const newUrl = data.find((r) => ids.includes(r.id))?.image_url;
-    setOrder((prev) => {
-      const fresh = buildOrder(data, sort);
-      const known = new Set(prev.map((s) => s.url));
-      const mine = fresh.filter((s) => s.url === newUrl);
-      const others = fresh.filter((s) => !known.has(s.url) && s.url !== newUrl);
-      const kept = prev
-        .filter((s) => s.url !== newUrl)
-        .map((s) => {
-          const all = fresh.find((f) => f.url === s.url)?.ids ?? s.ids;
-          return { url: s.url, ids: [...s.ids, ...all.filter((id) => !s.ids.includes(id))] };
-        });
-      return [...mine, ...kept, ...others];
-    });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -312,6 +315,7 @@ export default function CaptionApp() {
     if (error) {
       playSound("error");
       setError(`Your vote didn't save (${error.message}). Try again, or email ${CONTACT} if it keeps happening.`);
+      toast("error", "Vote didn't count", `Try again, or email ${CONTACT} if it keeps happening.`);
       const data = await fetchFeed();
       if (data) setRows(data);
     } else {
@@ -320,179 +324,296 @@ export default function CaptionApp() {
   };
 
   // ---------- what to show ----------
-  const isNew = (slot: Slot) =>
-    slot.ids.some((id) => !seenAtLoad.has(id) || arrivedIds.has(id));
-  const newSlots = order.filter(isNew);
-  const seenSlots = order.filter((s) => !isNew(s));
-  const visible = showSeen ? order : newSlots;
+  const slots = useMemo(() => buildSlots(rows), [rows]);
+  const isNew = (slot: Slot) => slot.ids.some((id) => !seenAtLoad.has(id) || arrivedIds.has(id));
+  const newSlots = slots.filter(isNew);
+  const seenSlots = slots.filter((s) => !isNew(s));
+  const visible = showSeen ? slots : newSlots;
   const announcement = ANNOUNCEMENTS[tick % ANNOUNCEMENTS.length];
+
+  // Group the visible notes by week, newest week first
+  const weeks = useMemo(() => {
+    if (now === null) return [];
+    const out: { key: number; label: string; items: { slot: Slot; index: number }[] }[] = [];
+    visible.forEach((slot, index) => {
+      const ws = weekStart(slot.newest);
+      const last = out[out.length - 1];
+      if (last && last.key === ws.getTime()) last.items.push({ slot, index });
+      else out.push({ key: ws.getTime(), label: weekLabel(ws, now), items: [{ slot, index }] });
+    });
+    return out;
+  }, [visible, now]);
+
+  // Meme of the week: best caption posted since Monday
+  const meme = useMemo(() => {
+    if (now === null) return undefined;
+    const monday = weekStart(new Date(now)).getTime();
+    return rows
+      .filter((r) => nyDay(r.created_at).getTime() >= monday && Number(r.score) > 0)
+      .sort((a, b) => Number(b.score) - Number(a.score))[0];
+  }, [rows, now]);
+
+  const openNote = (index: number) => {
+    playSound("tap");
+    setOpenIndex(index);
+    visible[index]?.ids.forEach((id) => pendingSeen.current.add(id));
+  };
 
   return (
     <>
       {tutorial && <Tutorial onClose={closeTutorial} />}
 
-      <main className="mx-auto grid w-full max-w-[1680px] gap-8 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(340px,420px)_1fr] lg:px-10">
-        {/* Left column: sign, humor, posting, leaderboard */}
-        <aside className="grid content-start gap-6 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pb-4 lg:pr-2">
-          <header className="mosaic">
-            <div className="mosaic-field px-5 py-6 text-center">
-              <h1 className="condensed text-5xl font-extrabold uppercase leading-none tracking-tight">
-                Caption the City
-              </h1>
-              <p className="mt-2">Upload a campus photo, get AI captions, and upvote the funniest.</p>
-              <p className="mt-1 text-sm text-ink/70">Made for Columbia. Posts are anonymous.</p>
-            </div>
-          </header>
+      <header className="mx-auto flex w-full max-w-[1680px] items-center justify-between gap-4 border-b border-ink/30 px-4 py-4 sm:px-6 lg:px-10">
+        <a href="/" className="hand text-lg tracking-[0.15em]">
+          At 116 &amp; Broadway
+        </a>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setTutorial(true)} className="rounded-full px-3 py-1 text-sm hover:bg-white">
+            How it works
+          </button>
+          <button onClick={toggleSound} aria-pressed={soundOn} className="rounded-full px-3 py-1 text-sm hover:bg-white">
+            {soundOn ? "Sound on" : "Sound off"}
+          </button>
+          <a href={user ? "/profile" : "/login"} className="rounded-full bg-ink px-4 py-1.5 text-sm text-white hover:bg-teal">
+            {user ? "My profile" : "Log in"}
+          </a>
+        </div>
+      </header>
 
-          <section
-            aria-label="Service announcement"
-            className="rounded-md border-2 border-ink bg-ink px-4 py-3 text-white"
-          >
-            <p className="condensed text-sm font-bold uppercase text-mustard">Service announcement</p>
-            <p key={tick} className="fade-in mt-1 min-h-[3rem] leading-snug" aria-live="polite">
-              {announcement}
-            </p>
-          </section>
-
+      <main className="mx-auto grid w-full max-w-[1680px] gap-10 px-4 py-8 sm:px-6 lg:grid-cols-[300px_1fr] lg:px-10">
+        <aside className="grid content-start gap-8 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-2">
           {user ? (
             <CreateCaptions userId={user.id} onCreated={onCreated} />
           ) : (
-            <div className="rounded-md border-2 border-dashed border-ink/40 bg-tile-face p-5 text-center">
-              <a href="/login" className="font-semibold text-teal underline">
+            <p className="text-sm">
+              <a href="/login" className="underline">
                 Log in
               </a>{" "}
-              with any email or Google account to post photos and vote.
-            </div>
+              to post a photo and vote.
+            </p>
+          )}
+
+          {meme && (
+            <section>
+              <h2 className="text-xs text-ink/60">Meme of the week</h2>
+              <div className="note mt-2 -rotate-1 p-4" style={{ background: NOTE_COLORS[0] }}>
+                <p className="leading-snug">{meme.caption}</p>
+                <p className="mt-2 text-xs text-ink/60">+{Number(meme.score)} so far. Crowned every Monday.</p>
+              </div>
+            </section>
           )}
 
           <Leaderboard leaders={leaders} today={leadersToday} />
 
-          <p className="text-center text-sm">
+          <section>
+            <h2 className="text-xs text-ink/60">What&apos;s new</h2>
+            <ul className="mt-2 grid gap-2 text-sm">
+              {UPDATES.map((u, i) => (
+                <li key={i} className="flex gap-3">
+                  <span className="w-12 shrink-0 text-ink/60">{u.date}</span>
+                  <span className="leading-snug">{u.text}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <p className="text-xs text-ink/60">
+            <span key={tick} className="fade-in inline-block">{announcement}</span>
+            <br />
             <a href="/privacy" className="underline">
               Privacy policy
             </a>
           </p>
         </aside>
 
-        {/* Right column: the feed */}
         <section aria-label="Caption feed" className="min-w-0">
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <div className="inline-flex rounded-md bg-ink p-1" role="tablist" aria-label="Sort captions">
-              {(["hot", "new", "top"] as const).map((s) => (
-                <button
-                  key={s}
-                  role="tab"
-                  aria-selected={sort === s}
-                  onClick={() => changeSort(s)}
-                  className={`condensed rounded px-5 py-1.5 text-base font-bold uppercase transition-colors ${
-                    sort === s ? "bg-mustard text-ink" : "text-white hover:text-mustard"
-                  }`}
-                >
-                  {s === "hot" ? "Hot" : s === "new" ? "New" : "Top"}
-                </button>
-              ))}
-            </div>
-
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                onClick={() => setTutorial(true)}
-                className="rounded-md border-2 border-ink bg-tile-face px-3 py-1.5 text-sm font-semibold hover:bg-ink hover:text-white"
-              >
-                ? How it works
-              </button>
-              <button
-                onClick={toggleSound}
-                aria-pressed={soundOn}
-                className="rounded-md border-2 border-ink bg-tile-face px-3 py-1.5 text-sm font-semibold hover:bg-ink hover:text-white"
-              >
-                {soundOn ? "Sound on" : "Sound off"}
-              </button>
-              <a
-                href={user ? "/profile" : "/login"}
-                className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-teal"
-              >
-                {user ? "My profile" : "Log in"}
-              </a>
-            </div>
-          </div>
-
-          <p className="mb-5 min-h-[1.5rem] text-ink/80">{hello}</p>
+          <p className="mb-6 min-h-[1.5rem] text-sm text-ink/70">{hello}</p>
 
           {error && (
-            <p className="mb-4 rounded-md border-2 border-brick bg-white p-3 font-semibold text-brick" role="alert">
+            <p className="mb-4 rounded-md border border-brick bg-white p-3 text-sm text-brick" role="alert">
               {error}
             </p>
           )}
-          {loading && <p>Loading captions…</p>}
 
-          <div className="grid items-start gap-6 md:grid-cols-2 2xl:grid-cols-3">
-            {visible.map((slot) => (
-              <PhotoCard
-                key={slot.url}
-                slot={slot}
-                rowById={rowById}
-                isArrived={slot.ids.some((id) => arrivedIds.has(id))}
-                onVote={vote}
-                trackSeen={trackSeen}
-              />
-            ))}
+          {loading && (
+            <div className="py-16">
+              <StickMan label="Fetching today's notes…" />
+            </div>
+          )}
 
-            {!loading && (
-              <CaughtUp
-                hasNew={newSlots.length > 0}
-                showSeen={showSeen}
-                seenCount={seenSlots.length}
-                countdown={countdown}
-                loggedIn={!!user}
-                onToggleSeen={() => {
-                  playSound("tap");
-                  setShowSeen(!showSeen);
-                }}
-              />
-            )}
-          </div>
+          {weeks.map((w, wi) => (
+            <div key={w.key} className={wi > 0 ? "mt-10" : ""}>
+              <div className="mb-5 flex items-center gap-3 text-xs text-ink/60">
+                <span className="shrink-0">{w.label}</span>
+                <span className="h-px flex-1 bg-ink/30" />
+              </div>
+              <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6">
+                {w.items.map(({ slot, index }) => (
+                  <NoteCard
+                    key={slot.url}
+                    slot={slot}
+                    index={index}
+                    rowById={rowById}
+                    isArrived={slot.ids.some((id) => arrivedIds.has(id))}
+                    onOpen={openNote}
+                    trackSeen={trackSeen}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {!loading && (
+            <CaughtUp
+              hasNew={newSlots.length > 0}
+              showSeen={showSeen}
+              seenCount={seenSlots.length}
+              countdown={countdown}
+              mondayIn={now === null ? 7 : daysUntilMonday(now)}
+              loggedIn={!!user}
+              onToggleSeen={() => {
+                playSound("tap");
+                setShowSeen(!showSeen);
+              }}
+            />
+          )}
         </section>
       </main>
+
+      {openIndex !== null && visible[openIndex] && (
+        <Lightbox
+          slots={visible}
+          index={openIndex}
+          rowById={rowById}
+          onVote={vote}
+          onMove={(i) => {
+            playSound("tap");
+            setOpenIndex(i);
+            visible[i]?.ids.forEach((id) => pendingSeen.current.add(id));
+          }}
+          onClose={() => setOpenIndex(null)}
+        />
+      )}
     </>
   );
 }
 
-function PhotoCard({
+function NoteCard({
   slot,
+  index,
   rowById,
   isArrived,
-  onVote,
+  onOpen,
   trackSeen,
 }: {
   slot: Slot;
+  index: number;
   rowById: Map<number, FeedRow>;
   isArrived: boolean;
-  onVote: (row: FeedRow, value: 1 | -1) => void;
+  onOpen: (index: number) => void;
   trackSeen: (el: HTMLElement | null) => void;
 }) {
   const captions = slot.ids.map((id) => rowById.get(id)).filter(Boolean) as FeedRow[];
   if (captions.length === 0) return null;
+  const best = [...captions].sort((a, b) => Number(b.score) - Number(a.score))[0];
+  const total = captions.reduce((n, c) => n + Number(c.score), 0);
+  const tilt = ((index * 37) % 5) - 2;
   return (
-    <article
-      className={`overflow-hidden rounded-md border-2 border-ink bg-tile-face shadow-[6px_6px_0_var(--ink)] ${
-        isArrived ? "arrive" : ""
-      }`}
+    <button
+      ref={trackSeen}
+      data-caption-ids={slot.ids.join(",")}
+      onClick={() => onOpen(index)}
+      className={`note group flex flex-col p-3 text-left transition-transform hover:-translate-y-1 hover:rotate-0 ${isArrived ? "arrive" : ""}`}
+      style={{ background: NOTE_COLORS[index % NOTE_COLORS.length], transform: `rotate(${tilt}deg)` }}
+      aria-label={`Open note: ${best.caption}`}
     >
-      <img src={slot.url} alt="" loading="lazy" className="aspect-[4/3] w-full border-b-2 border-ink object-cover" />
-      <ul>
-        {captions.map((c, i) => (
-          <li
-            key={c.id}
-            ref={trackSeen}
-            data-caption-id={c.id}
-            className={`flex items-center gap-4 px-4 py-4 ${i > 0 ? "border-t border-grout" : ""}`}
-          >
-            <VoteControl row={c} onVote={onVote} />
-            <p className="text-lg leading-snug">{c.caption}</p>
-          </li>
-        ))}
-      </ul>
-    </article>
+      <img src={slot.url} alt="" loading="lazy" className="aspect-square w-full object-cover" />
+      <p className="mt-2 line-clamp-3 text-sm leading-snug">{best.caption}</p>
+      <p className="mt-auto pt-2 text-xs text-ink/60">
+        {total > 0 ? `+${total}` : total} · {new Date(slot.newest).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+      </p>
+    </button>
+  );
+}
+
+function Lightbox({
+  slots,
+  index,
+  rowById,
+  onVote,
+  onMove,
+  onClose,
+}: {
+  slots: Slot[];
+  index: number;
+  rowById: Map<number, FeedRow>;
+  onVote: (row: FeedRow, value: 1 | -1) => void;
+  onMove: (index: number) => void;
+  onClose: () => void;
+}) {
+  const slot = slots[index];
+  const prev = index > 0 ? index - 1 : null;
+  const next = index < slots.length - 1 ? index + 1 : null;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft" && prev !== null) onMove(prev);
+      if (e.key === "ArrowRight" && next !== null) onMove(next);
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = overflow;
+    };
+  }, [prev, next, onMove, onClose]);
+
+  const captions = slot.ids.map((id) => rowById.get(id)).filter(Boolean) as FeedRow[];
+  const arrow = "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-ink/50 bg-white/60 text-xl hover:bg-white disabled:opacity-20";
+
+  return (
+    <div
+      className="lightbox fixed inset-0 z-50 flex items-center justify-center gap-4 bg-[#b9d9eb]/90 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Caption note"
+      onClick={onClose}
+    >
+      <button className={arrow} disabled={prev === null} onClick={(e) => { e.stopPropagation(); if (prev !== null) onMove(prev); }} aria-label="Previous note">
+        ←
+      </button>
+
+      <div
+        key={slot.url}
+        className="note note-open w-[min(520px,100%)] p-5"
+        style={{ background: NOTE_COLORS[index % NOTE_COLORS.length] }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <img src={slot.url} alt="" className="max-h-[55vh] w-full object-contain" />
+        <ul className="mt-3 grid gap-2">
+          {captions.map((c) => (
+            <li key={c.id} className="flex items-center gap-3">
+              <VoteControl row={c} onVote={onVote} />
+              <p className="text-base leading-snug">{c.caption}</p>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 flex items-center justify-between text-xs text-ink/60">
+          <span>
+            {index + 1} of {slots.length}. Use the arrow keys to flip through.
+          </span>
+          <button onClick={onClose} className="underline">
+            Close
+          </button>
+        </div>
+      </div>
+
+      <button className={arrow} disabled={next === null} onClick={(e) => { e.stopPropagation(); if (next !== null) onMove(next); }} aria-label="Next note">
+        →
+      </button>
+    </div>
   );
 }
 
@@ -519,7 +640,7 @@ function VoteControl({
       </button>
       <span
         key={score}
-        className={`pop condensed my-0.5 text-lg font-extrabold ${
+        className={`pop my-0.5 text-base font-medium ${
           score > 0 ? "text-teal" : score < 0 ? "text-brick" : ""
         }`}
       >
@@ -545,6 +666,7 @@ function CaughtUp({
   showSeen,
   seenCount,
   countdown,
+  mondayIn,
   loggedIn,
   onToggleSeen,
 }: {
@@ -552,60 +674,44 @@ function CaughtUp({
   showSeen: boolean;
   seenCount: number;
   countdown: string;
+  mondayIn: number;
   loggedIn: boolean;
   onToggleSeen: () => void;
 }) {
   return (
-    <div className="col-span-full rounded-md border-2 border-dashed border-ink/50 bg-tile-face p-6 text-center">
-      {showSeen ? (
-        <p className="text-lg font-semibold">That's everything, including captions you've seen.</p>
-      ) : (
-        <>
-          <p className="condensed text-3xl font-extrabold uppercase">
-            {hasNew ? "You're all caught up" : "No new captions since your last visit"}
-          </p>
-          <p className="mx-auto mt-2 max-w-xl">
-            New captions show up whenever someone posts a photo. Today's leaderboard resets at
-            midnight, in <strong>{countdown}</strong>.{" "}
-            {loggedIn ? "Post a photo to start the next set." : "Log in to post the next set."}
-          </p>
-        </>
-      )}
-      {seenCount > 0 && (
-        <button
-          onClick={onToggleSeen}
-          className="mt-4 rounded-md border-2 border-ink px-4 py-2 font-semibold hover:bg-ink hover:text-white"
-        >
-          {showSeen ? "Hide captions you've seen" : `Show captions you've seen (${seenCount} photos)`}
-        </button>
-      )}
+    <div className="mt-12 flex justify-center">
+      <div className="note w-[min(420px,100%)] rotate-1 p-6 text-center" style={{ background: NOTE_COLORS[2] }}>
+        <p className="hand text-xl tracking-[0.1em]">
+          {showSeen ? "That's every note" : hasNew ? "You're all caught up" : "Nothing new since your last visit"}
+        </p>
+        <p className="mt-2 text-sm leading-relaxed">
+          New notes appear whenever someone posts a photo. Today&apos;s leaderboard resets in {countdown}. The next meme
+          of the week is crowned in {mondayIn} {mondayIn === 1 ? "day" : "days"}.
+          {loggedIn ? " Post a photo to start the next set." : " Log in to post the next set."}
+        </p>
+        {seenCount > 0 && (
+          <button onClick={onToggleSeen} className="mt-3 text-sm underline">
+            {showSeen ? "Hide notes you've seen" : `Show notes you've seen (${seenCount})`}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
 function Leaderboard({ leaders, today }: { leaders: Leader[]; today: boolean }) {
   return (
-    <section className="rounded-md border-2 border-ink bg-tile-face p-5">
-      <h2 className="condensed text-2xl font-extrabold uppercase">
-        {today ? "Today's leaderboard" : "Leaderboard"}
-      </h2>
+    <section>
+      <h2 className="text-xs text-ink/60">{today ? "Today's leaderboard" : "Leaderboard"}</h2>
       {leaders.length === 0 ? (
-        <p className="mt-2 text-sm">
-          No votes yet {today ? "today" : ""}. Your upvote could put a caption at number 1.
-        </p>
+        <p className="mt-2 text-sm">No votes yet{today ? " today" : ""}. Your upvote could put a caption at number 1.</p>
       ) : (
-        <ol className="mt-3 grid gap-3">
+        <ol className="mt-2 grid gap-2">
           {leaders.map((l, i) => (
-            <li key={l.id} className="flex items-start gap-3">
-              <span
-                className={`condensed flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg font-extrabold ${
-                  i === 0 ? "bg-mustard text-ink" : "bg-ink text-white"
-                }`}
-              >
-                {i + 1}
-              </span>
-              <p className="flex-1 text-sm leading-snug">{l.caption}</p>
-              <span className="condensed text-lg font-extrabold text-teal">+{Number(l.score)}</span>
+            <li key={l.id} className="flex items-start gap-3 text-sm">
+              <span className="w-4 shrink-0 text-ink/60">{i + 1}</span>
+              <p className="flex-1 leading-snug">{l.caption}</p>
+              <span className="text-teal">+{Number(l.score)}</span>
             </li>
           ))}
         </ol>
@@ -658,6 +764,7 @@ function CreateCaptions({
     setPhase("error");
     setMessage(text);
     playSound("error");
+    toast("error", "Foul!", text);
   };
 
   const generate = async (e?: React.FormEvent) => {
@@ -688,7 +795,7 @@ function CreateCaptions({
       return;
     }
 
-    setStage("Writing captions");
+    setStage("Writing the caption");
     setProgress((p) => Math.max(p, 25));
     animateTo(95, 0.05);
 
@@ -717,6 +824,7 @@ function CreateCaptions({
     setProgress(100);
     setStage("Done");
     playSound("done");
+    toast("success", "Approved!", "Your caption is in the feed.");
     setTimeout(() => {
       setPhase("idle");
       setProgress(0);
@@ -740,21 +848,21 @@ function CreateCaptions({
   const pct = Math.round(progress);
 
   return (
-    <form ref={formRef} onSubmit={generate} className="rounded-md border-2 border-ink bg-tile-face p-5">
-      <h2 className="condensed mb-3 text-2xl font-extrabold uppercase">Caption a photo</h2>
+    <form ref={formRef} onSubmit={generate} className="note p-4" style={{ background: "#f8f1c8" }}>
+      <h2 className="mb-3 text-sm">Caption a photo</h2>
 
       <label
-        className={`flex items-center gap-4 rounded-md border-2 border-dashed border-ink/40 p-3 ${
+        className={`flex items-center gap-3 text-sm ${
           working ? "opacity-50" : "cursor-pointer hover:border-teal"
         }`}
       >
         {preview ? (
-          <img src={preview} alt="" className="h-20 w-20 rounded object-cover" />
+          <img src={preview} alt="" className="h-16 w-16 rounded object-cover" />
         ) : (
-          <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded bg-grout text-3xl">+</span>
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded border border-dashed border-ink/40 text-lg">+</span>
         )}
         <span className="min-w-0 break-words">
-          {file ? file.name : "Choose a campus photo (JPG, PNG or WebP, up to 5 MB)"}
+          {file ? file.name : "Choose a campus photo (up to 5 MB)"}
         </span>
         <input
           type="file"
@@ -771,20 +879,20 @@ function CreateCaptions({
         placeholder="Optional vibe, like “midterm week” or “housing lottery”"
         maxLength={200}
         disabled={working}
-        className="mt-3 w-full rounded-md border-2 border-ink/30 bg-white px-3 py-2 focus:border-teal"
+        className="mt-3 w-full rounded-md border border-ink/20 bg-white/70 px-3 py-2 text-sm focus:border-teal"
       />
 
       {working ? (
         <div className="mt-4" role="status" aria-live="polite">
           <div className="flex items-baseline justify-between">
-            <span className="font-semibold">{stage}…</span>
-            <span className="condensed text-2xl font-extrabold">{pct}%</span>
+            <span className="font-normal">{stage}…</span>
+            <span className="text-base font-medium">{pct}%</span>
           </div>
-          <div className="mt-2 h-3 overflow-hidden rounded-full border-2 border-ink bg-white">
-            <div className="h-full bg-teal transition-[width] duration-200" style={{ width: `${pct}%` }} />
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+            <div className="h-full bg-ink transition-[width] duration-200" style={{ width: `${pct}%` }} />
           </div>
-          <div className="track mt-3" aria-hidden="true">
-            <div className="train" />
+          <div className="mt-2">
+            <StickMan />
           </div>
           <p className="mt-3 text-sm">
             Usually takes about 10 seconds. You can keep scrolling the feed while you wait, or stop it.
@@ -792,7 +900,7 @@ function CreateCaptions({
           <button
             type="button"
             onClick={cancel}
-            className="mt-3 w-full rounded-md border-2 border-ink px-4 py-2 font-semibold hover:bg-ink hover:text-white"
+            className="mt-3 w-full rounded-md border border-ink px-4 py-2 font-normal hover:bg-ink hover:text-white"
           >
             Stop generating
           </button>
@@ -800,18 +908,18 @@ function CreateCaptions({
       ) : (
         <button
           disabled={!file}
-          className="mt-3 w-full rounded-md bg-teal px-4 py-3 text-lg font-bold text-white hover:bg-ink disabled:opacity-40"
+          className="mt-3 w-full rounded-md bg-ink px-4 py-2.5 text-sm text-white hover:bg-teal disabled:opacity-30"
         >
-          {phase === "error" ? "Try again" : "Generate captions"}
+          {phase === "error" ? "Try again" : "Generate caption"}
         </button>
       )}
 
       {!working && !message && (
-        <p className="mt-2 text-sm text-ink/70">You get 3 captions. They post to the feed without your name.</p>
+        <p className="mt-2 text-sm text-ink/70">AI writes one caption. It posts to the feed without your name.</p>
       )}
       {message && (
         <p
-          className={`mt-3 text-sm ${phase === "error" ? "rounded-md border-2 border-brick bg-white p-3 text-brick" : ""}`}
+          className={`mt-3 text-sm ${phase === "error" ? "rounded-md border border-brick bg-white p-3 text-brick" : ""}`}
           role={phase === "error" ? "alert" : "status"}
         >
           {message}

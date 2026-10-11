@@ -4,12 +4,12 @@ import { useState } from "react";
 
 const STEPS = [
   {
-    title: "Welcome to Caption the City",
+    title: "Welcome to 116 & Broadway",
     body: "Columbia's campus, captioned by AI and ranked by students. Here is how it works in 30 seconds.",
   },
   {
     title: "Post a campus photo",
-    body: "Upload a photo in the box on the left. AI writes 3 captions for it in a few seconds. Your name is never shown.",
+    body: "Upload a photo in the box on the left. AI writes a caption for it in a few seconds. Your name is never shown.",
   },
   {
     title: "Vote on what's funny",
@@ -38,10 +38,10 @@ export default function Tutorial({ onClose }: { onClose: () => void }) {
           <p className="text-sm text-ink/60">
             Step {step + 1} of {STEPS.length}
           </p>
-          <h2 id="tutorial-title" className="condensed mt-1 text-3xl font-extrabold uppercase leading-tight">
+          <h2 id="tutorial-title" className="mt-1 text-lg font-medium leading-tight">
             {s.title}
           </h2>
-          <p className="mt-3 text-lg leading-relaxed">{s.body}</p>
+          <p className="mt-3 text-base leading-relaxed">{s.body}</p>
 
           <div className="mt-6 flex items-center justify-between gap-3">
             <button onClick={onClose} className="text-sm underline">
@@ -51,7 +51,7 @@ export default function Tutorial({ onClose }: { onClose: () => void }) {
               {step > 0 && (
                 <button
                   onClick={() => setStep(step - 1)}
-                  className="rounded-md border-2 border-ink px-4 py-2 font-semibold"
+                  className="rounded-md border border-ink px-4 py-2 font-normal"
                 >
                   Back
                 </button>
@@ -59,7 +59,7 @@ export default function Tutorial({ onClose }: { onClose: () => void }) {
               <button
                 autoFocus
                 onClick={() => (last ? onClose() : setStep(step + 1))}
-                className="rounded-md bg-teal px-5 py-2 font-bold text-white hover:bg-ink"
+                className="rounded-md bg-teal px-5 py-2 font-medium text-white hover:bg-ink"
               >
                 {last ? "Start captioning" : "Next"}
               </button>
