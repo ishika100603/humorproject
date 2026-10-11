@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import NotePerson from "./note-person";
+import Menu from "./menu";
+import Crown from "./crown";
 
 
 function Clock() {
@@ -41,17 +43,10 @@ export default function Landing() {
 
 
   return (
-    <div className="landing relative flex min-h-screen w-full flex-col overflow-hidden bg-[#b9d9eb] text-[#141414]" style={{ cursor: MAGNIFIER }}>
+    <div className="landing relative flex min-h-[100dvh] w-full flex-col overflow-hidden bg-[#b9d9eb] text-[#141414]" style={{ cursor: MAGNIFIER }}>
       <header className="relative z-20 mx-5 border-b border-[#141414] pb-3 pt-5 sm:mx-8">
         <div className="flex items-center justify-between gap-4">
-          <a href="/" className="rounded-full border border-[#141414] px-3 py-0.5 text-xs font-medium tracking-wide">
-            116
-          </a>
-          <nav className="hidden gap-6 text-sm font-normal md:flex">
-            <a href="/feed" className="hover:underline">Feed</a>
-            <a href="/feed?tour=1" className="hover:underline">How it works</a>
-            <a href="/privacy" className="hover:underline">Privacy</a>
-          </nav>
+          <Menu />
           <div className="flex items-center gap-4">
             <p className="hidden text-right text-[11px] leading-tight sm:block">
               116th St &amp; Broadway, NY
@@ -68,25 +63,28 @@ export default function Landing() {
         </div>
       </header>
 
-      <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 pb-16 pt-8 text-center">
+      <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 pb-[6vh] pt-[2vh] text-center">
         <NotePerson />
-        <h1 className="hand mt-6 text-[clamp(22px,2.6vw,34px)] leading-tight tracking-[0.18em]">
+        <h1 className="hand mt-[2.5vh] text-[clamp(22px,2.6vw,34px)] leading-tight tracking-[0.18em]">
           At 116 &amp; Broadway
         </h1>
         <p className="mt-3 max-w-xl text-base font-medium sm:text-base">
-          Post a campus photo. AI writes the caption. Columbia votes.
+          Vote on the funniest captions on campus. Then post a photo and let AI write yours.
         </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
+        <div className="mt-[3vh] flex flex-wrap justify-center gap-3">
           <a href="/feed" className="rounded-full bg-[#141414] px-5 py-2 text-sm text-white transition-colors hover:bg-[#1d4f91]">
             Start voting
           </a>
           <a
-            href={loggedIn ? "/feed" : "/login"}
+            href={loggedIn ? "/feed?post=1" : "/login"}
             className="rounded-full border border-[#141414] px-5 py-2 text-sm transition-colors hover:bg-white"
           >
             Post a photo
           </a>
         </div>
+        <p className="mt-[2.5vh] flex items-center gap-1.5 text-xs text-[#141414]/70">
+          <Crown className="h-3.5 w-3.5" /> Earn a crown for every vote. Climb the rankboard.
+        </p>
       </main>
 
     </div>

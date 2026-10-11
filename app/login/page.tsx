@@ -111,43 +111,43 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="grid min-h-screen w-full lg:grid-cols-2">
-      <section className="flex flex-col items-center justify-center px-6 py-12 lg:px-16">
-        <div className="h-[clamp(140px,22vw,300px)] w-[clamp(260px,42vw,560px)]">
+    <main className="grid min-h-[100dvh] w-full lg:h-[100dvh] lg:grid-cols-2 lg:overflow-hidden">
+      <section className="flex flex-col items-center justify-center px-6 py-6 lg:px-16">
+        <div className="h-[min(18vw,26vh)] w-[min(34vw,48vh)] min-h-[90px] min-w-[170px]">
           <GooglyEyes />
         </div>
-        <p className="hand mt-6 text-[clamp(18px,1.8vw,24px)] tracking-[0.2em]">At 116 &amp; Broadway</p>
+        <p className="hand mt-[3vh] text-[clamp(16px,1.6vw,22px)] tracking-[0.2em]">At 116 &amp; Broadway</p>
         <p key={i} className="fade-in mt-2 max-w-sm text-center text-sm text-ink/60">
           {ANNOUNCEMENTS[i % ANNOUNCEMENTS.length]}
         </p>
       </section>
 
-      <section className="flex items-center justify-center bg-tile-face/80 px-6 py-12 lg:border-l-2 lg:border-ink">
+      <section className="flex items-center justify-center bg-tile-face/80 px-6 py-6 lg:border-l lg:border-ink/40">
         <div className="w-full max-w-sm">
-          <div className="mb-4 h-28 w-56">
+          <div className="mb-2 h-[min(80px,10vh)] w-[min(160px,20vh)]">
             <LogBox state={logState} />
           </div>
           <h2 className="text-xl font-medium">
             {mode === "login" ? "Log in" : "Create an account"}
           </h2>
-          <p className="mt-2 text-base">to post photos, vote on captions and make the leaderboard.</p>
+          <p className="mt-1 text-sm text-ink/70">to vote on captions and post photos.</p>
 
           <button
             onClick={google}
             disabled={!!busy}
-            className="mt-8 flex h-12 w-full items-center justify-center gap-3 rounded-full border border-[#747775] bg-white px-4 text-base font-medium text-[#1f1f1f] shadow-sm transition hover:bg-[#f8f9fa] hover:shadow disabled:opacity-60"
+            className="mt-[2.5vh] flex h-11 w-full items-center justify-center gap-3 rounded-full border border-[#747775] bg-white px-4 text-base font-medium text-[#1f1f1f] shadow-sm transition hover:bg-[#f8f9fa] hover:shadow disabled:opacity-60"
           >
             <GoogleG />
             {busy === "google" ? "Opening Google…" : "Continue with Google"}
           </button>
 
-          <div className="my-6 flex items-center gap-3 text-sm text-ink/60" aria-hidden="true">
+          <div className="my-[2vh] flex items-center gap-3 text-xs text-ink/60" aria-hidden="true">
             <span className="h-px flex-1 bg-ink/30" />
             or use any email
             <span className="h-px flex-1 bg-ink/30" />
           </div>
 
-          <form onSubmit={withEmail} className="grid gap-3">
+          <form onSubmit={withEmail} className="grid gap-2">
             <label className="grid gap-1">
               <span className="text-sm font-normal">Email</span>
               <input
@@ -157,7 +157,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="rounded-md border border-ink/30 bg-white px-3 py-2 focus:border-teal"
+                className="rounded-md border border-ink/30 bg-white px-3 py-1.5 focus:border-teal"
               />
             </label>
             <label className="grid gap-1">
@@ -170,18 +170,18 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={mode === "signup" ? "At least 6 characters" : ""}
-                className="rounded-md border border-ink/30 bg-white px-3 py-2 focus:border-teal"
+                className="rounded-md border border-ink/30 bg-white px-3 py-1.5 focus:border-teal"
               />
             </label>
             <button
               disabled={!!busy}
-              className="mt-1 h-11 rounded-md bg-ink px-4 text-sm text-white hover:bg-teal disabled:opacity-60"
+              className="mt-1 h-10 rounded-md bg-ink px-4 text-sm text-white hover:bg-teal disabled:opacity-60"
             >
               {busy === "email" ? "One sec…" : mode === "login" ? "Log in" : "Create account"}
             </button>
           </form>
 
-          <p className="mt-4 text-sm">
+          <p className="mt-3 text-sm">
             {mode === "login" ? "New here? " : "Already have an account? "}
             <button
               onClick={() => {
@@ -206,12 +206,12 @@ export default function LoginPage() {
             </p>
           )}
 
-          <p className="mt-6 text-sm text-ink/80">
+          <p className="mt-[2vh] text-xs text-ink/70">
             Any email works: Columbia, Barnard, Gmail, Outlook, Yahoo, you name it. Your posts
             never show your name.
           </p>
 
-          <p className="mt-8 text-sm">
+          <p className="mt-[2vh] text-xs">
             <a href="/feed" className="underline">
               Browse captions without logging in
             </a>

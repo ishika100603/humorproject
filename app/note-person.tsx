@@ -68,7 +68,7 @@ export function GooglyEyes() {
 }
 
 // A person buried in sticky notes, holding a mug. Black line drawing.
-function Figure() {
+export function Figure() {
   return (
     <svg viewBox="0 0 400 360" className="h-full w-full" aria-hidden="true" filter="url(#sketch)">
       <path d="M30 318 H370" stroke={INK} strokeWidth="3" strokeLinecap="round" />
@@ -87,9 +87,13 @@ export default function NotePerson() {
   const [grid, setGrid] = useState(false);
   const [hover, setHover] = useState<number | null>(null);
   const [width, setWidth] = useState(1200);
+  const [vh, setVh] = useState(900);
 
   useEffect(() => {
-    const f = () => setWidth(window.innerWidth);
+    const f = () => {
+      setWidth(window.innerWidth);
+      setVh(window.innerHeight);
+    };
     f();
     window.addEventListener("resize", f);
     return () => window.removeEventListener("resize", f);
@@ -101,7 +105,7 @@ export default function NotePerson() {
   const cellW = NOTE_W * scaleGrid + 22;
   const cellH = NOTE_H * scaleGrid + 22;
   const rows = Math.ceil(notes.length / cols);
-  const figW = Math.min(340, width * 0.62);
+  const figW = Math.min(320, width * 0.6, (vh * 0.32) / 0.9);
   const figH = figW * 0.9;
   const height = grid ? rows * cellH + 80 : figH;
   const small = Math.max(0.14, (figW / 520) * 0.3);
@@ -172,7 +176,7 @@ export default function NotePerson() {
           );
         })}
       </div>
-      <p className="mt-2 text-center text-sm">
+      <p className="mt-2 text-center text-xs text-[#141414]/60">
         {grid ? (
           <button
             onClick={() => {

@@ -25,6 +25,39 @@ function tone(
   osc.stop(t + length + 0.02);
 }
 
+// A soft, buzzy note that can wobble and sag, for the sad trombone
+function wah(freq: number, start: number, length: number, wobble = false) {
+  if (!ctx) return;
+  const osc = ctx.createOscillator();
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  osc.type = "sawtooth";
+  filter.type = "lowpass";
+  filter.Q.value = 6;
+  const t = ctx.currentTime + start;
+  osc.frequency.setValueAtTime(freq, t);
+  if (wobble) {
+    const lfo = ctx.createOscillator();
+    const depth = ctx.createGain();
+    lfo.frequency.value = 6;
+    depth.gain.value = 7;
+    lfo.connect(depth).connect(osc.frequency);
+    lfo.start(t);
+    lfo.stop(t + length + 0.05);
+    osc.frequency.linearRampToValueAtTime(freq * 0.94, t + length);
+  }
+  filter.frequency.setValueAtTime(500, t);
+  filter.frequency.linearRampToValueAtTime(1300, t + 0.08);
+  filter.frequency.linearRampToValueAtTime(600, t + length);
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.exponentialRampToValueAtTime(0.09, t + 0.03);
+  gain.gain.setValueAtTime(0.09, t + length * 0.7);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + length);
+  osc.connect(filter).connect(gain).connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + length + 0.05);
+}
+
 export function playSound(sound: Sound) {
   if (typeof window === "undefined") return;
   try {
@@ -37,12 +70,18 @@ export function playSound(sound: Sound) {
     return;
   }
   switch (sound) {
-    case "up": // bright two-note ding
-      tone(660, 0, 0.12, "triangle");
-      tone(990, 0.08, 0.18, "triangle");
+    case "up": // happy: quick rising major arpeggio with a sparkle on top
+      tone(523, 0, 0.12, "triangle", 0.13);
+      tone(659, 0.07, 0.12, "triangle", 0.13);
+      tone(784, 0.14, 0.14, "triangle", 0.13);
+      tone(1047, 0.21, 0.3, "sine", 0.12);
+      tone(1568, 0.26, 0.18, "sine", 0.05);
       break;
-    case "down": // low thud
-      tone(180, 0, 0.18, "sine", 0.2);
+    case "down": // disappointed: sad trombone "wah wah wahhh"
+      wah(392, 0, 0.26);
+      wah(370, 0.28, 0.26);
+      wah(349, 0.56, 0.26);
+      wah(330, 0.84, 0.7, true);
       break;
     case "unvote":
       tone(440, 0, 0.08, "sine", 0.08);

@@ -6,10 +6,13 @@ import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { playSound } from "@/lib/sound";
 import { toast } from "@/lib/toast";
-import { ANNOUNCEMENTS, greeting } from "@/lib/jokes";
+import { greeting } from "@/lib/jokes";
 import { UPDATES } from "@/lib/updates";
 import Tutorial from "./tutorial";
 import StickMan from "./stickman";
+import Menu from "./menu";
+import Mascot from "./mascot";
+import Crown from "./crown";
 
 const CONTACT = "ia2630@columbia.edu";
 
@@ -26,6 +29,10 @@ type FeedRow = {
 };
 
 type Leader = { id: number; caption: string; image_url: string; score: number };
+type MyPoints = { points: number; votes: number; days_this_month: number; bonus_months: number };
+type Peer = { rank: number; name: string; points: number; is_me: boolean | null };
+
+const BONUS_DAYS = 15;
 
 // One sticky note per photo. The order is by date, so voting never moves notes.
 type Slot = { url: string; ids: number[]; newest: string };
@@ -118,6 +125,12 @@ export default function CaptionApp() {
   const [hello, setHello] = useState("");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [now, setNow] = useState<number | null>(null);
+  const [postOpen, setPostOpen] = useState(false);
+  const [tossed, setTossed] = useState(false);
+  const [mine, setMine] = useState<MyPoints | null>(null);
+  const [peers, setPeers] = useState<Peer[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const bonusSeen = useRef<number | null>(null);
 
   const userRef = useRef<User | null>(null);
   const pendingSeen = useRef<Set<number>>(new Set());
@@ -146,6 +159,29 @@ export default function CaptionApp() {
     }
   }, []);
 
+  const loadPoints = useCallback(async (u: User | null) => {
+    const supabase = createClient();
+    const board = await supabase.rpc("points_board");
+    if (!board.error && board.data) setPeers(board.data as Peer[]);
+    if (!u) return;
+    const me = await supabase.rpc("my_points");
+    const row = (me.data as MyPoints[] | null)?.[0];
+    if (me.error || !row) return;
+    const next = {
+      points: Number(row.points),
+      votes: Number(row.votes),
+      days_this_month: Number(row.days_this_month),
+      bonus_months: Number(row.bonus_months),
+    };
+    // Celebrate the month bonus the moment it is earned
+    if (bonusSeen.current !== null && next.bonus_months > bonusSeen.current) {
+      playSound("done");
+      toast("success", "Bonus! +10 crowns", `You voted on ${BONUS_DAYS} different days this month.`);
+    }
+    bonusSeen.current = next.bonus_months;
+    setMine(next);
+  }, []);
+
   const fetchFeed = useCallback(async () => {
     const supabase = createClient();
     const { data, error } = await supabase.rpc("caption_feed");
@@ -165,6 +201,7 @@ export default function CaptionApp() {
       } = await supabase.auth.getUser();
       setUser(user);
       userRef.current = user;
+      loadPoints(user);
 
       // Which captions has this person already seen on earlier visits?
       let seen: number[] = readLocalSeen(seenKey(user));
@@ -184,10 +221,12 @@ export default function CaptionApp() {
 
     try {
       setSoundOn(localStorage.getItem("ctc-sound") !== "off");
-      const tour = new URLSearchParams(window.location.search).has("tour");
+      const params = new URLSearchParams(window.location.search);
+      if (params.has("post")) setPostOpen(true);
+      const tour = params.has("tour");
       if (tour || !localStorage.getItem("ctc-tutorial-done")) setTutorial(true);
     } catch {}
-  }, [fetchFeed, loadLeaders]);
+  }, [fetchFeed, loadLeaders, loadPoints]);
 
   // ---------- seen tracking ----------
   const flushSeen = useCallback(async () => {
@@ -277,6 +316,7 @@ export default function CaptionApp() {
     setRows(data);
     setArrivedIds((prev) => new Set([...prev, ...ids]));
     ids.forEach((id) => pendingSeen.current.add(id));
+    setPostOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -289,6 +329,8 @@ export default function CaptionApp() {
     const previous = row.my_vote ?? 0;
     const next = removing ? 0 : value;
     playSound(removing ? "unvote" : value === 1 ? "up" : "down");
+    const delta = previous === 0 && next !== 0 ? 1 : previous !== 0 && next === 0 ? -1 : 0;
+    if (delta) setMine((m) => (m ? { ...m, points: m.points + delta, votes: m.votes + delta } : m));
 
     // Counts update right away; the card stays where it is
     setRows((rs) =>
@@ -320,6 +362,7 @@ export default function CaptionApp() {
       if (data) setRows(data);
     } else {
       loadLeaders();
+      loadPoints(user);
     }
   };
 
@@ -329,7 +372,6 @@ export default function CaptionApp() {
   const newSlots = slots.filter(isNew);
   const seenSlots = slots.filter((s) => !isNew(s));
   const visible = showSeen ? slots : newSlots;
-  const announcement = ANNOUNCEMENTS[tick % ANNOUNCEMENTS.length];
 
   // Group the visible notes by week, newest week first
   const weeks = useMemo(() => {
@@ -363,71 +405,70 @@ export default function CaptionApp() {
     <>
       {tutorial && <Tutorial onClose={closeTutorial} />}
 
-      <header className="mx-auto flex w-full max-w-[1680px] items-center justify-between gap-4 border-b border-ink/30 px-4 py-4 sm:px-6 lg:px-10">
-        <a href="/" className="hand text-lg tracking-[0.15em]">
-          At 116 &amp; Broadway
-        </a>
+      <header className="mx-auto flex w-full max-w-[1680px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-10">
+        <div className="flex items-center gap-3">
+          <Menu open={menuOpen} onOpenChange={setMenuOpen}>
+            <CrownsPanel mine={mine} loggedIn={!!user} />
+            <Rankboard peers={peers} />
+            {meme && (
+              <section>
+                <h2 className="text-xs text-ink/60">Meme of the week</h2>
+                <p className="mt-1 text-sm leading-snug">“{meme.caption}”</p>
+                <p className="mt-1 text-xs text-ink/60">+{Number(meme.score)} so far. Crowned every Monday.</p>
+              </section>
+            )}
+            <Leaderboard leaders={leaders} today={leadersToday} />
+            <section>
+              <h2 className="text-xs text-ink/60">What&apos;s new</h2>
+              <ul className="mt-2 grid gap-2 text-sm">
+                {UPDATES.map((u, i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="w-12 shrink-0 text-ink/60">{u.date}</span>
+                    <span className="leading-snug">{u.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+            <button onClick={toggleSound} aria-pressed={soundOn} className="self-start text-sm underline">
+              {soundOn ? "Turn sound off" : "Turn sound on"}
+            </button>
+          </Menu>
+          <a href="/" className="hand text-base tracking-[0.15em]">
+            At 116 &amp; Broadway
+          </a>
+        </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setTutorial(true)} className="rounded-full px-3 py-1 text-sm hover:bg-white">
-            How it works
-          </button>
-          <button onClick={toggleSound} aria-pressed={soundOn} className="rounded-full px-3 py-1 text-sm hover:bg-white">
-            {soundOn ? "Sound on" : "Sound off"}
+          {user ? (
+            <button
+              onClick={() => setMenuOpen(true)}
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm hover:bg-white"
+              title="Your crowns and the rankboard"
+            >
+              <Crown />
+              <span key={mine?.points} className="pop inline-block">{mine?.points ?? 0}</span>
+            </button>
+          ) : (
+            <span className="hidden items-center gap-1.5 text-xs text-ink/70 sm:flex">
+              <Crown className="h-3.5 w-3.5" /> Log in to earn crowns for voting
+            </span>
+          )}
+          <button
+            onClick={() => (user ? setPostOpen(true) : router.push("/login"))}
+            className="rounded-full border border-ink px-4 py-1.5 text-sm hover:bg-white"
+          >
+            Post a photo
           </button>
           <a href={user ? "/profile" : "/login"} className="rounded-full bg-ink px-4 py-1.5 text-sm text-white hover:bg-teal">
-            {user ? "My profile" : "Log in"}
+            {user ? "Profile" : "Log in"}
           </a>
         </div>
       </header>
 
-      <main className="mx-auto grid w-full max-w-[1680px] gap-10 px-4 py-8 sm:px-6 lg:grid-cols-[300px_1fr] lg:px-10">
-        <aside className="grid content-start gap-8 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:pr-2">
-          {user ? (
-            <CreateCaptions userId={user.id} onCreated={onCreated} />
-          ) : (
-            <p className="text-sm">
-              <a href="/login" className="underline">
-                Log in
-              </a>{" "}
-              to post a photo and vote.
-            </p>
-          )}
-
-          {meme && (
-            <section>
-              <h2 className="text-xs text-ink/60">Meme of the week</h2>
-              <div className="note mt-2 -rotate-1 p-4" style={{ background: NOTE_COLORS[0] }}>
-                <p className="leading-snug">{meme.caption}</p>
-                <p className="mt-2 text-xs text-ink/60">+{Number(meme.score)} so far. Crowned every Monday.</p>
-              </div>
-            </section>
-          )}
-
-          <Leaderboard leaders={leaders} today={leadersToday} />
-
-          <section>
-            <h2 className="text-xs text-ink/60">What&apos;s new</h2>
-            <ul className="mt-2 grid gap-2 text-sm">
-              {UPDATES.map((u, i) => (
-                <li key={i} className="flex gap-3">
-                  <span className="w-12 shrink-0 text-ink/60">{u.date}</span>
-                  <span className="leading-snug">{u.text}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <p className="text-xs text-ink/60">
-            <span key={tick} className="fade-in inline-block">{announcement}</span>
-            <br />
-            <a href="/privacy" className="underline">
-              Privacy policy
-            </a>
-          </p>
-        </aside>
-
+      <main className="mx-auto w-full max-w-[1680px] px-4 pb-16 pt-4 sm:px-6 lg:px-10">
         <section aria-label="Caption feed" className="min-w-0">
-          <p className="mb-6 min-h-[1.5rem] text-sm text-ink/70">{hello}</p>
+          <p className="mb-6 min-h-[1.5rem] text-sm text-ink/70">
+            {hello} Tap a note and vote. Every vote earns a crown.
+          </p>
 
           {error && (
             <p className="mb-4 rounded-md border border-brick bg-white p-3 text-sm text-brick" role="alert">
@@ -447,10 +488,11 @@ export default function CaptionApp() {
                 <span className="shrink-0">{w.label}</span>
                 <span className="h-px flex-1 bg-ink/30" />
               </div>
-              <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6">
+              <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
                 {w.items.map(({ slot, index }) => (
                   <NoteCard
                     key={slot.url}
+                    tossed={tossed}
                     slot={slot}
                     index={index}
                     rowById={rowById}
@@ -480,6 +522,25 @@ export default function CaptionApp() {
         </section>
       </main>
 
+      <Mascot onThrow={() => setTossed(true)} onHelp={() => setTutorial(true)} />
+
+      {postOpen && user && (
+        <div
+          className="lightbox fixed inset-0 z-50 flex items-center justify-center bg-[#b9d9eb]/90 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Post a photo"
+          onClick={() => setPostOpen(false)}
+        >
+          <div className="note-open w-[min(340px,100%)]" onClick={(e) => e.stopPropagation()}>
+            <CreateCaptions userId={user.id} onCreated={onCreated} />
+            <button onClick={() => setPostOpen(false)} className="mt-3 w-full text-center text-sm underline">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
       {openIndex !== null && visible[openIndex] && (
         <Lightbox
           slots={visible}
@@ -499,6 +560,7 @@ export default function CaptionApp() {
 }
 
 function NoteCard({
+  tossed,
   slot,
   index,
   rowById,
@@ -506,6 +568,7 @@ function NoteCard({
   onOpen,
   trackSeen,
 }: {
+  tossed: boolean;
   slot: Slot;
   index: number;
   rowById: Map<number, FeedRow>;
@@ -523,12 +586,18 @@ function NoteCard({
       ref={trackSeen}
       data-caption-ids={slot.ids.join(",")}
       onClick={() => onOpen(index)}
-      className={`note group flex flex-col p-3 text-left transition-transform hover:-translate-y-1 hover:rotate-0 ${isArrived ? "arrive" : ""}`}
-      style={{ background: NOTE_COLORS[index % NOTE_COLORS.length], transform: `rotate(${tilt}deg)` }}
+      className={`note group flex flex-col p-3 text-left transition-transform hover:-translate-y-1 hover:rotate-0 ${isArrived ? "arrive" : ""} ${
+        tossed ? "drop-in" : "opacity-0"
+      }`}
+      style={{
+        background: NOTE_COLORS[index % NOTE_COLORS.length],
+        transform: `rotate(${tilt}deg)`,
+        animationDelay: `${Math.min(index, 20) * 45}ms`,
+      }}
       aria-label={`Open note: ${best.caption}`}
     >
       <img src={slot.url} alt="" loading="lazy" className="aspect-square w-full object-cover" />
-      <p className="mt-2 line-clamp-3 text-sm leading-snug">{best.caption}</p>
+      <p className="mt-2 text-sm leading-snug">{best.caption}</p>
       <p className="mt-auto pt-2 text-xs text-ink/60">
         {total > 0 ? `+${total}` : total} · {new Date(slot.newest).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
       </p>
@@ -571,7 +640,7 @@ function Lightbox({
   }, [prev, next, onMove, onClose]);
 
   const captions = slot.ids.map((id) => rowById.get(id)).filter(Boolean) as FeedRow[];
-  const arrow = "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-ink/50 bg-white/60 text-xl hover:bg-white disabled:opacity-20";
+  const arrow = "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/50 bg-white/60 text-xl hover:bg-white disabled:opacity-20";
 
   return (
     <div
@@ -587,22 +656,22 @@ function Lightbox({
 
       <div
         key={slot.url}
-        className="note note-open w-[min(520px,100%)] p-5"
+        className="note note-open w-[min(320px,100%)] p-4"
         style={{ background: NOTE_COLORS[index % NOTE_COLORS.length] }}
         onClick={(e) => e.stopPropagation()}
       >
-        <img src={slot.url} alt="" className="max-h-[55vh] w-full object-contain" />
+        <img src={slot.url} alt="" className="aspect-square w-full object-cover" />
         <ul className="mt-3 grid gap-2">
           {captions.map((c) => (
-            <li key={c.id} className="flex items-center gap-3">
+            <li key={c.id} className="grid gap-1">
+              <p className="text-sm leading-snug">{c.caption}</p>
               <VoteControl row={c} onVote={onVote} />
-              <p className="text-base leading-snug">{c.caption}</p>
             </li>
           ))}
         </ul>
         <div className="mt-4 flex items-center justify-between text-xs text-ink/60">
           <span>
-            {index + 1} of {slots.length}. Use the arrow keys to flip through.
+            {index + 1} of {slots.length}. Arrow keys flip.
           </span>
           <button onClick={onClose} className="underline">
             Close
@@ -617,6 +686,25 @@ function Lightbox({
   );
 }
 
+function Thumb({ down = false, filled = false }: { down?: boolean; filled?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={down ? { transform: "scaleY(-1)" } : undefined}
+      aria-hidden="true"
+    >
+      <path d="M7 10v12" />
+      <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z" />
+    </svg>
+  );
+}
+
 function VoteControl({
   row,
   onVote,
@@ -625,39 +713,112 @@ function VoteControl({
   onVote: (row: FeedRow, value: 1 | -1) => void;
 }) {
   const score = Number(row.score);
+  const [burst, setBurst] = useState<{ id: number; text: string } | null>(null);
+  const cast = (value: 1 | -1) => {
+    const prev = row.my_vote ?? 0;
+    const text = prev === 0 ? "+1" : prev === value ? "-1" : "";
+    if (text) setBurst({ id: Date.now(), text });
+    onVote(row, value);
+  };
+  const btn = "flex h-9 w-9 items-center justify-center rounded-full transition-transform active:scale-90";
   return (
-    <div className="flex w-10 shrink-0 flex-col items-center">
+    <div className="relative flex shrink-0 items-center gap-1">
+      {burst && (
+        <span key={burst.id} className="crown-burst pointer-events-none absolute -top-5 left-6 flex items-center gap-0.5 text-xs text-teal">
+          <Crown className="h-3.5 w-3.5" />
+          {burst.text}
+        </span>
+      )}
       <button
-        onClick={() => onVote(row, 1)}
-        aria-label="Upvote"
+        onClick={() => cast(1)}
+        aria-label="Funny"
         title="Funny"
         aria-pressed={row.my_vote === 1}
-        className={`flex h-8 w-8 items-center justify-center rounded transition-transform active:scale-90 ${
-          row.my_vote === 1 ? "bg-teal text-white" : "text-ink/40 hover:text-teal"
-        }`}
+        className={`${btn} ${row.my_vote === 1 ? "thumb-pop text-teal" : "text-ink/50 hover:text-teal"}`}
       >
-        ▲
+        <Thumb filled={row.my_vote === 1} />
       </button>
       <span
         key={score}
-        className={`pop my-0.5 text-base font-medium ${
-          score > 0 ? "text-teal" : score < 0 ? "text-brick" : ""
-        }`}
+        className={`pop w-6 text-center text-sm ${score > 0 ? "text-teal" : score < 0 ? "text-brick" : "text-ink/60"}`}
       >
         {score}
       </span>
       <button
-        onClick={() => onVote(row, -1)}
-        aria-label="Downvote"
+        onClick={() => cast(-1)}
+        aria-label="Not funny"
         title="Not funny"
         aria-pressed={row.my_vote === -1}
-        className={`flex h-8 w-8 items-center justify-center rounded transition-transform active:scale-90 ${
-          row.my_vote === -1 ? "bg-brick text-white" : "text-ink/40 hover:text-brick"
-        }`}
+        className={`${btn} ${row.my_vote === -1 ? "thumb-pop text-brick" : "text-ink/50 hover:text-brick"}`}
       >
-        ▼
+        <Thumb down filled={row.my_vote === -1} />
       </button>
     </div>
+  );
+}
+
+function CrownsPanel({ mine, loggedIn }: { mine: MyPoints | null; loggedIn: boolean }) {
+  const days = mine?.days_this_month ?? 0;
+  const pct = Math.min(100, (days / BONUS_DAYS) * 100);
+  return (
+    <section>
+      <h2 className="flex items-center gap-1.5 text-xs text-ink/60">
+        <Crown className="h-3.5 w-3.5" /> Your crowns
+      </h2>
+      {loggedIn ? (
+        <>
+          <p className="mt-1 text-2xl">{mine?.points ?? 0}</p>
+          <p className="mt-2 text-xs text-ink/70">
+            Monthly bonus: {Math.min(days, BONUS_DAYS)} of {BONUS_DAYS} voting days
+            {days >= BONUS_DAYS ? ". Earned!" : ""}
+          </p>
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white">
+            <div className="h-full bg-teal transition-[width] duration-500" style={{ width: `${pct}%` }} />
+          </div>
+        </>
+      ) : (
+        <p className="mt-1 text-sm">
+          <a href="/login" className="underline">
+            Log in
+          </a>{" "}
+          to start earning.
+        </p>
+      )}
+      <ul className="mt-3 grid gap-1 text-xs text-ink/70">
+        <li>+1 crown for every caption you vote on</li>
+        <li>+10 bonus for voting on {BONUS_DAYS} different days in a month</li>
+      </ul>
+    </section>
+  );
+}
+
+function Rankboard({ peers }: { peers: Peer[] }) {
+  return (
+    <section>
+      <h2 className="text-xs text-ink/60">Rankboard</h2>
+      {peers.length === 0 ? (
+        <p className="mt-1 text-sm">No one has voted yet. First vote takes the top spot.</p>
+      ) : (
+        <ol className="mt-2 grid gap-1.5">
+          {peers.map((p, i) => (
+            <li
+              key={i}
+              className={`flex items-center gap-3 rounded px-1.5 py-0.5 text-sm ${p.is_me ? "bg-white" : ""}`}
+            >
+              <span className="w-5 shrink-0 text-ink/60">{Number(p.rank)}</span>
+              <span className="flex-1 truncate">
+                {p.name}
+                {p.is_me ? " (you)" : ""}
+              </span>
+              <span className="flex items-center gap-1">
+                <Crown className="h-3.5 w-3.5" />
+                {Number(p.points)}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   );
 }
 

@@ -8,7 +8,7 @@ const BASE_PROMPT = `You write captions for "At 116 & Broadway", a site where Co
 Our typical user is a Columbia junior who is active on Sidechat (the anonymous campus app) and knows the campus inside jokes.
 Write 1 short caption for this photo that would get upvoted on Columbia's Sidechat.
 Rules:
-- Keep it under 20 words.
+- Keep it short: 12 words or fewer, so it fits on a sticky note.
 - Use specific details you can actually see in the photo.
 - Use Columbia references only when they fit naturally, for example Butler, Low Steps, John Jay, JJ's, Ferris, Lerner, the Core, Lit Hum, the housing lottery, Barnard, the 1 train, Morningside.
 - Pick whichever style is funniest for this photo: a dry observation, Sidechat voice (lowercase, deadpan), or junior-year life (midterms, recruiting, housing).

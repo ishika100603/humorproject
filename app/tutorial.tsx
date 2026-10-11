@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const STEPS = [
   {
@@ -8,16 +8,20 @@ const STEPS = [
     body: "Columbia's campus, captioned by AI and ranked by students. Here is how it works in 30 seconds.",
   },
   {
-    title: "Post a campus photo",
-    body: "Upload a photo in the box on the left. AI writes a caption for it in a few seconds. Your name is never shown.",
+    title: "Vote on what's funny",
+    body: "Tap a sticky note to open it. Thumbs up if it made you laugh, thumbs down if it didn't. Flip between notes with the arrow keys.",
   },
   {
-    title: "Vote on what's funny",
-    body: "Tap ▲ if a caption made you laugh and ▼ if it didn't. Votes decide today's leaderboard.",
+    title: "Earn crowns",
+    body: "Every vote earns 1 crown. Vote on 15 different days in a month for a +10 bonus. See where you rank against classmates in the menu.",
+  },
+  {
+    title: "Post a campus photo",
+    body: "Use Post a photo at the top right. AI writes a short caption in a few seconds. Your name is never shown.",
   },
   {
     title: "Come back for fresh ones",
-    body: "Each visit shows only captions you haven't seen. Want the old ones? Use “Show captions you've seen.”",
+    body: "Each visit shows only notes you haven't seen. Want the old ones? Use “Show notes you've seen” at the bottom.",
   },
 ];
 
@@ -25,6 +29,24 @@ export default function Tutorial({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState(0);
   const last = step === STEPS.length - 1;
   const s = STEPS[step];
+
+  // Arrow keys move through the steps, Enter goes forward, Esc skips
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "ArrowRight" || e.key === "Enter") {
+        e.preventDefault();
+        if (step === STEPS.length - 1) onClose();
+        else setStep(step + 1);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (step > 0) setStep(step - 1);
+      } else if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [step, onClose]);
 
   return (
     <div
@@ -36,7 +58,7 @@ export default function Tutorial({ onClose }: { onClose: () => void }) {
       <div className="mosaic w-full max-w-md">
         <div className="mosaic-field p-6">
           <p className="text-sm text-ink/60">
-            Step {step + 1} of {STEPS.length}
+            Step {step + 1} of {STEPS.length}. Use ← → keys, or Esc to skip.
           </p>
           <h2 id="tutorial-title" className="mt-1 text-lg font-medium leading-tight">
             {s.title}
