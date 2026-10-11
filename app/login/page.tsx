@@ -12,17 +12,32 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-[70vh] max-w-sm flex-col items-center justify-center gap-6 p-6 text-center">
-      <h1 className="text-3xl font-bold">Log in</h1>
-      <p className="text-gray-600">
-        Sign in with your Columbia Google account to see your profile.
-      </p>
-      <button
-        onClick={signIn}
-        className="rounded-lg bg-black px-5 py-3 text-white hover:bg-gray-800"
-      >
-        Continue with Google
-      </button>
+    <main className="mx-auto flex min-h-[80vh] w-full max-w-md flex-col justify-center px-4 py-8">
+      <div className="mosaic">
+        <div className="mosaic-field px-6 py-8 text-center">
+          <h1 className="condensed text-5xl font-extrabold uppercase leading-none">
+            Caption the City
+          </h1>
+          <p className="mt-3">
+            Log in with your Google account to upload photos and vote. Posts are anonymous.
+          </p>
+          <button
+            onClick={signIn}
+            className="mt-6 w-full rounded-md bg-teal px-5 py-3 text-lg font-bold text-white hover:bg-ink"
+          >
+            Continue with Google
+          </button>
+          <p className="mt-4 text-sm">
+            <a href="/" className="underline">
+              Back to captions
+            </a>
+            {"  ·  "}
+            <a href="/privacy" className="underline">
+              Privacy policy
+            </a>
+          </p>
+        </div>
+      </div>
     </main>
   );
 }

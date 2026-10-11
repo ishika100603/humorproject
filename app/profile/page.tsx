@@ -61,7 +61,7 @@ export default function ProfilePage() {
       setStatus(error.message);
     } else {
       setProfile({ ...profile, ...updates });
-      setStatus("Saved!");
+      setStatus("Name saved.");
     }
   };
 
@@ -94,7 +94,7 @@ export default function ProfilePage() {
       setStatus(error.message);
     } else {
       setProfile({ ...profile, avatar_url: data.publicUrl });
-      setStatus("Photo updated!");
+      setStatus("Photo updated.");
     }
     setUploading(false);
   };
@@ -106,73 +106,92 @@ export default function ProfilePage() {
     router.refresh();
   };
 
-  if (!profile) return <p className="p-6">Loading your profile…</p>;
+  if (!profile)
+    return <p className="mx-auto w-full max-w-md px-4 py-8">Loading your profile…</p>;
 
   const needsName = !profile.first_name || !profile.last_name;
 
   return (
-    <main className="mx-auto max-w-md p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Profile</h1>
-        <button onClick={signOut} className="text-sm text-gray-600 underline">
+    <main className="mx-auto w-full max-w-md px-4 py-8">
+      <nav className="mb-4 flex items-center justify-between">
+        <a href="/" className="text-sm font-semibold underline">
+          Back to captions
+        </a>
+        <button onClick={signOut} className="text-sm underline">
           Log out
         </button>
-      </div>
+      </nav>
 
-      {needsName && (
-        <div className="mb-6 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-yellow-900">
-          Welcome! Please add your first and last name to finish setting up
-          your profile.
-        </div>
-      )}
+      <div className="mosaic">
+        <div className="mosaic-field px-6 py-7">
+          <h1 className="condensed text-center text-4xl font-extrabold uppercase leading-none">
+            Your profile
+          </h1>
+          <p className="mt-2 text-center text-sm text-ink/70">
+            Only you can see this. Your captions post without your name.
+          </p>
 
-      <div className="mb-6 flex items-center gap-4">
-        {profile.avatar_url ? (
-          <img
-            src={profile.avatar_url}
-            alt="Profile photo"
-            className="h-24 w-24 rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-200 text-gray-500">
-            No photo
+          {needsName && (
+            <p className="mt-5 rounded-md border-2 border-mustard bg-mustard/15 p-3 text-sm">
+              Add your first and last name to finish setting up your account.
+            </p>
+          )}
+
+          <div className="mt-6 flex items-center gap-4">
+            {profile.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt="Your profile photo"
+                className="h-24 w-24 rounded-full border-2 border-ink object-cover"
+              />
+            ) : (
+              <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed border-ink/40 bg-grout text-sm">
+                No photo
+              </div>
+            )}
+            <label className="cursor-pointer rounded-md border-2 border-ink px-4 py-2 text-sm font-semibold hover:bg-ink hover:text-white">
+              {uploading ? "Uploading photo…" : profile.avatar_url ? "Change photo" : "Upload photo"}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={uploadPhoto}
+                className="sr-only"
+                disabled={uploading}
+              />
+            </label>
           </div>
-        )}
-        <label className="cursor-pointer rounded-lg border px-4 py-2 text-sm hover:bg-gray-50">
-          {uploading ? "Uploading…" : "Upload photo"}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={uploadPhoto}
-            className="hidden"
-            disabled={uploading}
-          />
-        </label>
-      </div>
 
-      <form onSubmit={saveNames} className="grid gap-4">
-        <p className="text-sm text-gray-600">{profile.email}</p>
-        <label className="grid gap-1">
-          <span className="text-sm font-medium">First name</span>
-          <input
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            className="rounded-lg border px-3 py-2"
-          />
-        </label>
-        <label className="grid gap-1">
-          <span className="text-sm font-medium">Last name</span>
-          <input
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            className="rounded-lg border px-3 py-2"
-          />
-        </label>
-        <button className="rounded-lg bg-black px-4 py-2 text-white hover:bg-gray-800">
-          Save
-        </button>
-        {status && <p className="text-sm">{status}</p>}
-      </form>
+          <form onSubmit={saveNames} className="mt-6 grid gap-4">
+            <p className="text-sm text-ink/70">{profile.email}</p>
+            <label className="grid gap-1">
+              <span className="text-sm font-semibold">First name</span>
+              <input
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                autoComplete="given-name"
+                className="rounded-md border-2 border-ink/30 bg-white px-3 py-2 focus:border-teal"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-sm font-semibold">Last name</span>
+              <input
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                autoComplete="family-name"
+                className="rounded-md border-2 border-ink/30 bg-white px-3 py-2 focus:border-teal"
+              />
+            </label>
+            <button className="rounded-md bg-teal px-4 py-3 font-bold text-white hover:bg-ink">
+              Save name
+            </button>
+            {status && (
+              <p className="text-sm" role="status">
+                {status}
+              </p>
+            )}
+          </form>
+        </div>
+      </div>
     </main>
   );
 }

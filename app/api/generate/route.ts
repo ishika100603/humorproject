@@ -3,15 +3,16 @@ import { createClient } from "@/lib/supabase/server";
 
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 
-// The prompt is written for our user persona, Sam, and is saved with every caption.
-const BASE_PROMPT = `You are a comedy writer for "Caption the City", a site for Columbia students who are new to New York.
-Our typical user is Sam: a Columbia College junior from the Midwest, chronically online, who lives in the dorms and explores NYC on weekends.
-Write 3 short, funny captions for this photo that Sam would want to screenshot and send to the group chat.
+// The prompt is written for our target user and is saved with every caption.
+const BASE_PROMPT = `You write captions for "Caption the City", a site where Columbia students upload campus photos and vote on AI captions.
+Our typical user is a Columbia junior who is active on Sidechat (the anonymous campus app) and knows the campus inside jokes.
+Write 3 short captions for this photo that would get upvoted on Columbia's Sidechat.
 Rules:
 - Each caption is under 20 words.
 - Use specific details you can actually see in the photo.
-- Mix styles: one observational, one in an internet/meme voice, one about being new to NYC or college life.
-- Keep it playful and kind: no insults about people's appearance, no slurs, nothing sexual.
+- Use Columbia references only when they fit naturally, for example Butler, Low Steps, John Jay, JJ's, Ferris, Lerner, the Core, Lit Hum, the housing lottery, Barnard, the 1 train, Morningside.
+- Mix styles: one dry observation, one in Sidechat voice (lowercase, deadpan), one about junior-year life (midterms, recruiting, housing).
+- Be playful, never cruel: no jokes about people's looks or identity, no real named students, no slurs, nothing sexual.
 Return only a JSON array of 3 strings.`;
 
 export async function POST(request: Request) {
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.json({ error: "Please log in first." }, { status: 401 });
+    return NextResponse.json({ error: "Log in to generate captions." }, { status: 401 });
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
 
   // Users can only generate captions for photos in their own folder
   if (!path.startsWith(`${user.id}/`)) {
-    return NextResponse.json({ error: "Invalid photo." }, { status: 400 });
+    return NextResponse.json({ error: "That photo upload wasn't found. Upload it again." }, { status: 400 });
   }
 
   const { data: file, error: downloadError } = await supabase.storage
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
     .download(path);
   if (downloadError || !file) {
     return NextResponse.json(
-      { error: "Could not read the uploaded photo." },
+      { error: "Couldn't read that photo. Try a JPG or PNG." },
       { status: 400 }
     );
   }
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
     const detail = await geminiRes.text();
     console.error("Gemini error", geminiRes.status, detail);
     return NextResponse.json(
-      { error: `The AI request failed (${geminiRes.status}). Try again.` },
+      { error: `Caption request failed (${geminiRes.status}). Try again in a moment.` },
       { status: 502 }
     );
   }
@@ -114,7 +115,7 @@ export async function POST(request: Request) {
   }
   if (captions.length === 0) {
     return NextResponse.json(
-      { error: "The AI didn't return any captions. Try again." },
+      { error: "No captions came back for that photo. Try again." },
       { status: 502 }
     );
   }
