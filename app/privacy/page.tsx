@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy – Caption the City",
+  title: "Privacy | Caption the City",
 };
 
 export default function PrivacyPage() {

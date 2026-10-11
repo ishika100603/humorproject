@@ -122,3 +122,23 @@ body {
     animation: none;
   }
 }
+
+/* Rotating announcements fade in */
+.fade-in {
+  animation: fade-in 500ms ease-out;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade-in {
+    animation: none;
+  }
+}

@@ -12,6 +12,7 @@ Rules:
 - Use specific details you can actually see in the photo.
 - Use Columbia references only when they fit naturally, for example Butler, Low Steps, John Jay, JJ's, Ferris, Lerner, the Core, Lit Hum, the housing lottery, Barnard, the 1 train, Morningside.
 - Mix styles: one dry observation, one in Sidechat voice (lowercase, deadpan), one about junior-year life (midterms, recruiting, housing).
+- Never use em dashes. Use commas or periods instead.
 - Be playful, never cruel: no jokes about people's looks or identity, no real named students, no slurs, nothing sexual.
 Return only a JSON array of 3 strings.`;
 
@@ -107,6 +108,8 @@ export async function POST(request: Request) {
     if (Array.isArray(parsed)) {
       captions = parsed
         .map((c) => String(c).trim())
+        // No em or en dashes in captions
+        .map((c) => c.replace(/\s*[\u2014\u2013]\s*/g, ", "))
         .filter(Boolean)
         .slice(0, 3);
     }
