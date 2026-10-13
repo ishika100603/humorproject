@@ -30,7 +30,14 @@ type FeedRow = {
 
 type Leader = { id: number; caption: string; image_url: string; score: number };
 type MyPoints = { points: number; votes: number; days_this_month: number; bonus_months: number };
-type Peer = { rank: number; name: string; points: number; is_me: boolean | null };
+type Peer = { rank: number; name: string; points: number; is_me: boolean | null; is_star?: boolean | null };
+type Star = {
+  star_names: string | null;
+  star_votes: number | null;
+  leader_name: string | null;
+  leader_votes: number | null;
+  my_votes: number | null;
+};
 
 const BONUS_DAYS = 15;
 
@@ -129,6 +136,7 @@ export default function CaptionApp() {
   const [tossed, setTossed] = useState(false);
   const [mine, setMine] = useState<MyPoints | null>(null);
   const [peers, setPeers] = useState<Peer[]>([]);
+  const [star, setStar] = useState<Star | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const bonusSeen = useRef<number | null>(null);
 
@@ -163,6 +171,8 @@ export default function CaptionApp() {
     const supabase = createClient();
     const board = await supabase.rpc("points_board");
     if (!board.error && board.data) setPeers(board.data as Peer[]);
+    const st = await supabase.rpc("star_of_week");
+    if (!st.error && st.data) setStar((st.data as Star[])[0] ?? null);
     if (!u) return;
     const me = await supabase.rpc("my_points");
     const row = (me.data as MyPoints[] | null)?.[0];
@@ -409,18 +419,17 @@ export default function CaptionApp() {
         <div className="flex items-center gap-3">
           <Menu open={menuOpen} onOpenChange={setMenuOpen}>
             <CrownsPanel mine={mine} loggedIn={!!user} />
+            <StarPanel star={star} loggedIn={!!user} daysLeft={now === null ? 7 : daysUntilMonday(now)} />
             <Rankboard peers={peers} />
             {meme && (
               <section>
-                <h2 className="text-xs text-ink/60">Meme of the week</h2>
+                <h2 className="text-xs text-ink/60">Funniest this week</h2>
                 <p className="mt-1 text-sm leading-snug">“{meme.caption}”</p>
-                <p className="mt-1 text-xs text-ink/60">+{Number(meme.score)} so far. Crowned every Monday.</p>
               </section>
             )}
-            <Leaderboard leaders={leaders} today={leadersToday} />
-            <section>
-              <h2 className="text-xs text-ink/60">What&apos;s new</h2>
-              <ul className="mt-2 grid gap-2 text-sm">
+            <details className="text-sm">
+              <summary className="cursor-pointer text-xs text-ink/60">What&apos;s new</summary>
+              <ul className="mt-2 grid gap-1.5">
                 {UPDATES.map((u, i) => (
                   <li key={i} className="flex gap-3">
                     <span className="w-12 shrink-0 text-ink/60">{u.date}</span>
@@ -428,7 +437,7 @@ export default function CaptionApp() {
                   </li>
                 ))}
               </ul>
-            </section>
+            </details>
             <button onClick={toggleSound} aria-pressed={soundOn} className="self-start text-sm underline">
               {soundOn ? "Turn sound off" : "Turn sound on"}
             </button>
@@ -449,7 +458,7 @@ export default function CaptionApp() {
             </button>
           ) : (
             <span className="hidden items-center gap-1.5 text-xs text-ink/70 sm:flex">
-              <Crown className="h-3.5 w-3.5" /> Log in to earn crowns for voting
+              <Crown className="h-3.5 w-3.5" /> Log in to earn crowns
             </span>
           )}
           <button
@@ -768,26 +777,44 @@ function CrownsPanel({ mine, loggedIn }: { mine: MyPoints | null; loggedIn: bool
       {loggedIn ? (
         <>
           <p className="mt-1 text-2xl">{mine?.points ?? 0}</p>
-          <p className="mt-2 text-xs text-ink/70">
-            Monthly bonus: {Math.min(days, BONUS_DAYS)} of {BONUS_DAYS} voting days
-            {days >= BONUS_DAYS ? ". Earned!" : ""}
-          </p>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white">
-            <div className="h-full bg-teal transition-[width] duration-500" style={{ width: `${pct}%` }} />
+          <p className="mt-1 text-xs text-ink/70">1 per vote. Vote on {BONUS_DAYS} days this month for +10.</p>
+          <div className="mt-2 flex items-center gap-2 text-xs text-ink/60">
+            <div className="h-1 flex-1 overflow-hidden rounded-full bg-white">
+              <div className="h-full bg-teal transition-[width] duration-500" style={{ width: `${pct}%` }} />
+            </div>
+            {days >= BONUS_DAYS ? "done" : `${days}/${BONUS_DAYS}`}
           </div>
         </>
       ) : (
         <p className="mt-1 text-sm">
-          <a href="/login" className="underline">
-            Log in
-          </a>{" "}
-          to start earning.
+          <a href="/login" className="underline">Log in</a> and every vote earns one.
         </p>
       )}
-      <ul className="mt-3 grid gap-1 text-xs text-ink/70">
-        <li>+1 crown for every caption you vote on</li>
-        <li>+10 bonus for voting on {BONUS_DAYS} different days in a month</li>
-      </ul>
+    </section>
+  );
+}
+
+function StarPanel({ star, loggedIn, daysLeft }: { star: Star | null; loggedIn: boolean; daysLeft: number }) {
+  const leader = star?.leader_name;
+  const mineVotes = Number(star?.my_votes ?? 0);
+  return (
+    <section>
+      <h2 className="text-xs text-ink/60">★ Star of the week</h2>
+      {star?.star_names ? (
+        <p className="mt-1 text-sm">
+          <span className="text-base">{star.star_names}</span>
+          <span className="text-ink/60"> · {Number(star.star_votes)} votes last week</span>
+        </p>
+      ) : (
+        <p className="mt-1 text-sm">Nobody yet. Suspicious.</p>
+      )}
+      <p className="mt-1 text-xs text-ink/70">
+        Most votes in a week wins a gold star by their name and +5 crowns.
+      </p>
+      <p className="mt-2 text-xs text-ink/70">
+        {leader ? `This week: ${leader} leads with ${Number(star?.leader_votes)}.` : "This week is wide open."}
+        {loggedIn ? ` You have ${mineVotes}.` : ""} {daysLeft} {daysLeft === 1 ? "day" : "days"} left.
+      </p>
     </section>
   );
 }
@@ -797,10 +824,10 @@ function Rankboard({ peers }: { peers: Peer[] }) {
     <section>
       <h2 className="text-xs text-ink/60">Rankboard</h2>
       {peers.length === 0 ? (
-        <p className="mt-1 text-sm">No one has voted yet. First vote takes the top spot.</p>
+        <p className="mt-1 text-sm">Empty. One vote and you&apos;re first.</p>
       ) : (
-        <ol className="mt-2 grid gap-1.5">
-          {peers.map((p, i) => (
+        <ol className="mt-2 grid gap-1">
+          {peers.slice(0, 10).map((p, i) => (
             <li
               key={i}
               className={`flex items-center gap-3 rounded px-1.5 py-0.5 text-sm ${p.is_me ? "bg-white" : ""}`}
@@ -808,7 +835,8 @@ function Rankboard({ peers }: { peers: Peer[] }) {
               <span className="w-5 shrink-0 text-ink/60">{Number(p.rank)}</span>
               <span className="flex-1 truncate">
                 {p.name}
-                {p.is_me ? " (you)" : ""}
+                {p.is_star ? <span className="ml-1 text-[#c9a227]" title="Star of the week">★</span> : null}
+                {p.is_me ? <span className="text-ink/50"> (you)</span> : null}
               </span>
               <span className="flex items-center gap-1">
                 <Crown className="h-3.5 w-3.5" />
@@ -826,7 +854,6 @@ function CaughtUp({
   hasNew,
   showSeen,
   seenCount,
-  countdown,
   mondayIn,
   loggedIn,
   onToggleSeen,
@@ -846,9 +873,9 @@ function CaughtUp({
           {showSeen ? "That's every note" : hasNew ? "You're all caught up" : "Nothing new since your last visit"}
         </p>
         <p className="mt-2 text-sm leading-relaxed">
-          New notes appear whenever someone posts a photo. Today&apos;s leaderboard resets in {countdown}. The next meme
-          of the week is crowned in {mondayIn} {mondayIn === 1 ? "day" : "days"}.
-          {loggedIn ? " Post a photo to start the next set." : " Log in to post the next set."}
+          That&apos;s everything for now. New notes show up when someone posts a photo.
+          {loggedIn ? " Could be you." : " Log in and it could be you."} Star of the week is picked in {mondayIn}{" "}
+          {mondayIn === 1 ? "day" : "days"}.
         </p>
         {seenCount > 0 && (
           <button onClick={onToggleSeen} className="mt-3 text-sm underline">
@@ -857,27 +884,6 @@ function CaughtUp({
         )}
       </div>
     </div>
-  );
-}
-
-function Leaderboard({ leaders, today }: { leaders: Leader[]; today: boolean }) {
-  return (
-    <section>
-      <h2 className="text-xs text-ink/60">{today ? "Today's leaderboard" : "Leaderboard"}</h2>
-      {leaders.length === 0 ? (
-        <p className="mt-2 text-sm">No votes yet{today ? " today" : ""}. Your upvote could put a caption at number 1.</p>
-      ) : (
-        <ol className="mt-2 grid gap-2">
-          {leaders.map((l, i) => (
-            <li key={l.id} className="flex items-start gap-3 text-sm">
-              <span className="w-4 shrink-0 text-ink/60">{i + 1}</span>
-              <p className="flex-1 leading-snug">{l.caption}</p>
-              <span className="text-teal">+{Number(l.score)}</span>
-            </li>
-          ))}
-        </ol>
-      )}
-    </section>
   );
 }
 
@@ -977,7 +983,7 @@ function CreateCaptions({
     const json = await res.json().catch(() => ({}));
     if (controller.signal.aborted) return;
     if (!res.ok) {
-      fail(`${json.error ?? "Caption request failed."} If this keeps happening, email ${CONTACT} and we'll fix it.`);
+      fail(`${json.error ?? "That didn't work. Try again."} Still stuck? Email ${CONTACT}.`);
       return;
     }
 
@@ -985,7 +991,7 @@ function CreateCaptions({
     setProgress(100);
     setStage("Done");
     playSound("done");
-    toast("success", "Approved!", "Your caption is in the feed.");
+    toast("success", "Approved!", "Your caption is up.");
     setTimeout(() => {
       setPhase("idle");
       setProgress(0);
@@ -1001,7 +1007,7 @@ function CreateCaptions({
     stopTimer();
     setPhase("stopped");
     setProgress(0);
-    setMessage("Stopped. Nothing new will show up from this photo unless the AI had already finished.");
+    setMessage("Stopped. If the AI already finished, it may still post.");
     playSound("unvote");
   };
 
@@ -1023,7 +1029,7 @@ function CreateCaptions({
           <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded border border-dashed border-ink/40 text-lg">+</span>
         )}
         <span className="min-w-0 break-words">
-          {file ? file.name : "Choose a campus photo (up to 5 MB)"}
+          {file ? file.name : "Choose any photo (up to 5 MB)"}
         </span>
         <input
           type="file"
@@ -1037,7 +1043,7 @@ function CreateCaptions({
       <input
         value={angle}
         onChange={(e) => setAngle(e.target.value)}
-        placeholder="Optional vibe, like “midterm week” or “housing lottery”"
+        placeholder="Optional hint, like “midterm week”"
         maxLength={200}
         disabled={working}
         className="mt-3 w-full rounded-md border border-ink/20 bg-white/70 px-3 py-2 text-sm focus:border-teal"
@@ -1076,7 +1082,7 @@ function CreateCaptions({
       )}
 
       {!working && !message && (
-        <p className="mt-2 text-sm text-ink/70">AI writes one caption. It posts to the feed without your name.</p>
+        <p className="mt-2 text-sm text-ink/70">One caption, posted without your name.</p>
       )}
       {message && (
         <p

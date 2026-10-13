@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import NotePerson from "./note-person";
 import Menu from "./menu";
 import Crown from "./crown";
+import { JOKES } from "@/lib/jokes";
 
 
 function Clock() {
@@ -35,10 +36,13 @@ const MAGNIFIER =
 
 export default function Landing() {
   const [loggedIn, setLoggedIn] = useState(false);
+  const [joke, setJoke] = useState(0);
+  const [shown, setShown] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => setLoggedIn(!!data.user));
+    setJoke(Math.floor(Math.random() * JOKES.length));
   }, []);
 
 
@@ -68,9 +72,25 @@ export default function Landing() {
         <h1 className="hand mt-[2.5vh] text-[clamp(22px,2.6vw,34px)] leading-tight tracking-[0.18em]">
           At 116 &amp; Broadway
         </h1>
-        <p className="mt-3 max-w-xl text-base font-medium sm:text-base">
-          Vote on the funniest captions on campus. Then post a photo and let AI write yours.
-        </p>
+        <div className="mt-[2vh] max-w-xl text-base">
+          <p>{JOKES[joke].setup}</p>
+          {loggedIn ? (
+            shown ? (
+              <p className="pop mt-1">{JOKES[joke].punch}</p>
+            ) : (
+              <button onClick={() => setShown(true)} className="mt-1 text-sm underline">
+                Show the punchline
+              </button>
+            )
+          ) : (
+            <p className="mt-1 text-sm">
+              <span aria-hidden className="mr-2 select-none blur-[5px]">
+                {"so the punchline is about this long"}
+              </span>
+              <a href="/login" className="underline">Log in to read the punchline</a>
+            </p>
+          )}
+        </div>
         <div className="mt-[3vh] flex flex-wrap justify-center gap-3">
           <a href="/feed" className="rounded-full bg-[#141414] px-5 py-2 text-sm text-white transition-colors hover:bg-[#1d4f91]">
             Start voting
@@ -83,7 +103,7 @@ export default function Landing() {
           </a>
         </div>
         <p className="mt-[2.5vh] flex items-center gap-1.5 text-xs text-[#141414]/70">
-          <Crown className="h-3.5 w-3.5" /> Earn a crown for every vote. Climb the rankboard.
+          <Crown className="h-3.5 w-3.5" /> Vote on AI captions, earn crowns, post any photo.
         </p>
       </main>
 

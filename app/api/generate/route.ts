@@ -15,17 +15,21 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export const maxDuration = 60;
 
 // The prompt is written for our target user and is saved with every caption.
-const BASE_PROMPT = `You write captions for "At 116 & Broadway", a site where Columbia students upload campus photos and vote on AI captions.
-Our typical user is a Columbia junior who is active on Sidechat (the anonymous campus app) and knows the campus inside jokes.
-Write 1 short caption for this photo that would get upvoted on Columbia's Sidechat.
-Rules:
-- Keep it short: 12 words or fewer, so it fits on a sticky note.
-- Use specific details you can actually see in the photo.
-- Use Columbia references only when they fit naturally, for example Butler, Low Steps, John Jay, JJ's, Ferris, Lerner, the Core, Lit Hum, the housing lottery, Barnard, the 1 train, Morningside.
-- Pick whichever style is funniest for this photo: a dry observation, Sidechat voice (lowercase, deadpan), or junior-year life (midterms, recruiting, housing).
-- Never use em dashes. Use commas or periods instead.
-- Be playful, never cruel: no jokes about people's looks or identity, no real named students, no slurs, nothing sexual.
-Return only a JSON array with exactly 1 string.`;
+const BASE_PROMPT = `You write captions for "At 116 & Broadway", where Columbia students post photos and vote on AI captions.
+Your reader is a Columbia junior who lives on Sidechat. They have seen every generic joke, so be specific.
+The photo can be anything: food, a pet, a dorm room, a screenshot, a sunset, a selfie, a weird sign. Caption what is actually in it.
+
+How to be funny:
+- Find the one odd, oddly specific, or painfully relatable detail in the photo and build the joke on it.
+- Short setup, twist at the end. The last few words should land the joke.
+- Sound like a real student posting, not a brand or a greeting card. Lowercase deadpan is fine.
+- Connect it to student life only when it fits (deadlines, dining halls, the 1 train, Butler, housing, recruiting, midterms). Don't force Columbia into every caption.
+- Skip the obvious first joke anyone would make, puns on the object's name, hashtags, emojis, and "POV".
+- 12 words or fewer. Never use em dashes.
+- Playful, never cruel: no jokes about looks, bodies, or identity, no real named people, nothing sexual.
+
+Write 3 different caption ideas, then pick the funniest.
+Return only JSON like {"ideas": ["...", "...", "..."], "best": "..."}.`;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -141,14 +145,16 @@ export async function POST(request: Request) {
   let captions: string[] = [];
   try {
     const parsed = JSON.parse(text);
-    if (Array.isArray(parsed)) {
-      captions = parsed
-        .map((c) => String(c).trim())
-        // No em or en dashes in captions
-        .map((c) => c.replace(/\s*[\u2014\u2013]\s*/g, ", "))
-        .filter(Boolean)
-        .slice(0, 1);
-    }
+    const picked: unknown[] = Array.isArray(parsed)
+      ? parsed
+      : [parsed?.best, ...(Array.isArray(parsed?.ideas) ? parsed.ideas : [])];
+    captions = picked
+      .filter((c) => typeof c === "string")
+      .map((c) => String(c).trim().replace(/^["“]|["”]$/g, ""))
+      // No em or en dashes in captions
+      .map((c) => c.replace(/\s*[\u2014\u2013]\s*/g, ", "))
+      .filter(Boolean)
+      .slice(0, 1);
   } catch {
     captions = [];
   }
