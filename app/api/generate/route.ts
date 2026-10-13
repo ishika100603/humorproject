@@ -1,7 +1,18 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
+// Tried in order. If Google says a model is busy or missing, we move to the next one.
+const MODELS = Array.from(
+  new Set(
+    [process.env.GEMINI_MODEL, "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite"].filter(
+      Boolean
+    ) as string[]
+  )
+);
+const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export const maxDuration = 60;
 
 // The prompt is written for our target user and is saved with every caption.
 const BASE_PROMPT = `You write captions for "At 116 & Broadway", a site where Columbia students upload campus photos and vote on AI captions.
@@ -58,36 +69,61 @@ export async function POST(request: Request) {
     ? `${BASE_PROMPT}\nExtra direction from the user: ${angle}`
     : BASE_PROMPT;
 
-  const geminiRes = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { inline_data: { mime_type: mimeType, data: imageBase64 } },
-              { text: prompt },
-            ],
-          },
+  const requestBody = JSON.stringify({
+    contents: [
+      {
+        parts: [
+          { inline_data: { mime_type: mimeType, data: imageBase64 } },
+          { text: prompt },
         ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 1,
-        },
-      }),
-    }
-  );
+      },
+    ],
+    generationConfig: {
+      responseMimeType: "application/json",
+      temperature: 1,
+    },
+  });
 
-  if (!geminiRes.ok) {
-    const detail = await geminiRes.text();
-    console.error("Gemini error", geminiRes.status, detail);
+  let geminiRes: Response | null = null;
+  let usedModel = MODELS[0];
+  let lastStatus = 0;
+  outer: for (const model of MODELS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+            body: requestBody,
+          }
+        );
+        if (res.ok) {
+          geminiRes = res;
+          usedModel = model;
+          break outer;
+        }
+        lastStatus = res.status;
+        console.error("Gemini error", model, res.status, (await res.text()).slice(0, 500));
+        // Busy: wait and retry once, then try the next model. Missing model: next model.
+        if (res.status === 404) break;
+        if (!RETRYABLE.has(res.status)) break outer;
+      } catch (e) {
+        lastStatus = 503;
+        console.error("Gemini fetch failed", model, e);
+      }
+      if (attempt === 0) await sleep(1200);
+    }
+  }
+
+  if (!geminiRes) {
+    const busy = RETRYABLE.has(lastStatus);
     return NextResponse.json(
-      { error: `Caption request failed (${geminiRes.status}). Try again in a moment.` },
+      {
+        error: busy
+          ? "The caption AI is busy right now. Give it a minute and try again."
+          : `Caption request failed (${lastStatus}). Try again in a moment.`,
+      },
       { status: 502 }
     );
   }
@@ -134,7 +170,7 @@ export async function POST(request: Request) {
         image_url: imageUrl,
         caption,
         prompt,
-        model: MODEL,
+        model: usedModel,
         created_by: user.id,
       }))
     )
