@@ -377,7 +377,8 @@ export default function CaptionApp() {
   };
 
   // ---------- what to show ----------
-  const slots = useMemo(() => buildSlots(rows), [rows]);
+  // Older photos got 3 captions each. The feed now shows only one-caption notes.
+  const slots = useMemo(() => buildSlots(rows).filter((slot) => slot.ids.length === 1), [rows]);
   const isNew = (slot: Slot) => slot.ids.some((id) => !seenAtLoad.has(id) || arrivedIds.has(id));
   const newSlots = slots.filter(isNew);
   const seenSlots = slots.filter((s) => !isNew(s));
@@ -653,7 +654,7 @@ function Lightbox({
 
   return (
     <div
-      className="lightbox fixed inset-0 z-50 flex items-center justify-center gap-4 bg-[#b9d9eb]/90 p-4 backdrop-blur-sm"
+      className="lightbox fixed inset-0 z-50 flex items-center justify-center gap-3 bg-[#b9d9eb]/90 px-4 py-8 backdrop-blur-sm sm:gap-6"
       role="dialog"
       aria-modal="true"
       aria-label="Caption note"
@@ -665,7 +666,7 @@ function Lightbox({
 
       <div
         key={slot.url}
-        className="note note-open w-[min(320px,100%)] p-4"
+        className="note note-open w-[min(300px,calc(100vw-8rem),calc(100dvh-15rem))] min-w-[200px] p-4"
         style={{ background: NOTE_COLORS[index % NOTE_COLORS.length] }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -678,12 +679,12 @@ function Lightbox({
             </li>
           ))}
         </ul>
-        <div className="mt-4 flex items-center justify-between text-xs text-ink/60">
+        <div className="mt-3 flex items-center justify-between border-t border-ink/10 pt-2 text-xs text-ink/50">
           <span>
-            {index + 1} of {slots.length}. Arrow keys flip.
+            {index + 1} / {slots.length}
           </span>
-          <button onClick={onClose} className="underline">
-            Close
+          <button onClick={onClose} className="hover:text-ink">
+            Close (Esc)
           </button>
         </div>
       </div>

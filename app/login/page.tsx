@@ -24,8 +24,10 @@ function GoogleG() {
 // Turn Supabase's error text into plain advice
 function friendly(msg: string) {
   const m = msg.toLowerCase();
-  if (m.includes("invalid login")) return "That email and password don't match. Check for typos, or create an account below.";
-  if (m.includes("already registered")) return "That email already has an account. Switch to Log in.";
+  if (m.includes("invalid login"))
+    return "Wrong email or password. If you signed up with Google, use Continue with Google. Or tap Forgot password.";
+  if (m.includes("already registered"))
+    return "You already have an account with this email. If you used Google before, tap Continue with Google. Otherwise, log in.";
   if (m.includes("password should be")) return "Passwords need at least 6 characters.";
   if (m.includes("email not confirmed")) return "Confirm your email first. Check your inbox for the link we sent.";
   if (m.includes("rate limit")) return "Too many tries in a row. Wait a minute and try again.";
@@ -63,6 +65,25 @@ export default function LoginPage() {
       setBusy("");
       { setError(friendly(error.message)); toast("error", "Foul!", friendly(error.message)); }
     }
+  };
+
+  // Emails a reset link. It lands on the profile page, where a new password can be set.
+  const forgot = async () => {
+    setError("");
+    setNotice("");
+    if (!email) {
+      setError("Type your email above first, then tap Forgot password.");
+      return;
+    }
+    const supabase = createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    });
+    if (error) {
+      setError(friendly(error.message));
+      return;
+    }
+    setNotice(`Sent. Open the link in your email to ${email}, then pick a new password.`);
   };
 
   const withEmail = async (e: React.FormEvent) => {
@@ -122,34 +143,34 @@ export default function LoginPage() {
         </p>
       </section>
 
-      <section className="flex items-center justify-center bg-tile-face/80 px-6 py-6 lg:border-l lg:border-ink/40">
-        <div className="w-full max-w-sm">
-          <div className="mb-2 h-[min(80px,10vh)] w-[min(160px,20vh)]">
+      <section className="relative flex items-center justify-center bg-tile-face/80 px-8 py-[8vh] lg:border-l lg:border-ink/40 lg:px-[6vw]">
+        <div className="w-full max-w-[340px]">
+          <div className="mb-[1.5vh] hidden h-[min(64px,8vh)] w-[min(128px,16vh)] [@media(min-height:640px)]:block">
             <LogBox state={logState} />
           </div>
           <h2 className="text-xl font-medium">
             {mode === "login" ? "Log in" : "Create an account"}
           </h2>
-          <p className="mt-1 text-sm text-ink/70">to vote on captions and post photos.</p>
+          <p className="mt-1 text-sm text-ink/60">to vote and post photos.</p>
 
           <button
             onClick={google}
             disabled={!!busy}
-            className="mt-[2.5vh] flex h-11 w-full items-center justify-center gap-3 rounded-full border border-[#747775] bg-white px-4 text-base font-medium text-[#1f1f1f] shadow-sm transition hover:bg-[#f8f9fa] hover:shadow disabled:opacity-60"
+            className="mt-[3vh] flex h-10 w-full items-center justify-center gap-3 rounded-full border border-[#747775] bg-white px-4 text-sm font-medium text-[#1f1f1f] shadow-sm transition hover:bg-[#f8f9fa] hover:shadow disabled:opacity-60"
           >
             <GoogleG />
             {busy === "google" ? "Opening Google…" : "Continue with Google"}
           </button>
 
-          <div className="my-[2vh] flex items-center gap-3 text-xs text-ink/60" aria-hidden="true">
+          <div className="my-[2.5vh] flex items-center gap-3 text-xs text-ink/50" aria-hidden="true">
             <span className="h-px flex-1 bg-ink/30" />
-            or use any email
+            or email
             <span className="h-px flex-1 bg-ink/30" />
           </div>
 
-          <form onSubmit={withEmail} className="grid gap-2">
+          <form onSubmit={withEmail} className="grid gap-3">
             <label className="grid gap-1">
-              <span className="text-sm font-normal">Email</span>
+              <span className="text-xs text-ink/70">Email</span>
               <input
                 type="email"
                 required
@@ -161,7 +182,7 @@ export default function LoginPage() {
               />
             </label>
             <label className="grid gap-1">
-              <span className="text-sm font-normal">Password</span>
+              <span className="text-xs text-ink/70">Password</span>
               <input
                 type="password"
                 required
@@ -181,7 +202,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="mt-3 text-sm">
+          <p className="mt-[2.5vh] text-xs">
             {mode === "login" ? "New here? " : "Already have an account? "}
             <button
               onClick={() => {
@@ -193,34 +214,33 @@ export default function LoginPage() {
             >
               {mode === "login" ? "Create an account" : "Log in"}
             </button>
+            {mode === "login" && (
+              <>
+                <span className="text-ink/40"> · </span>
+                <button type="button" onClick={forgot} className="font-normal text-teal underline">
+                  Forgot password?
+                </button>
+              </>
+            )}
           </p>
 
           {notice && (
-            <p className="mt-4 rounded-md border border-teal bg-white p-3 text-sm" role="status">
+            <p className="mt-3 text-xs text-teal" role="status">
               {notice}
             </p>
           )}
           {error && (
-            <p className="mt-4 rounded-md border border-brick bg-white p-3 text-sm text-brick" role="alert">
+            <p className="mt-3 text-xs text-brick" role="alert">
               {error}
             </p>
           )}
 
-          <p className="mt-[2vh] text-xs text-ink/70">
-            Any email works: Columbia, Barnard, Gmail, Outlook, Yahoo, you name it. Your posts
-            never show your name.
-          </p>
-
-          <p className="mt-[2vh] text-xs">
-            <a href="/feed" className="underline">
-              Browse captions without logging in
-            </a>
-            <span className="mx-2" aria-hidden="true">|</span>
-            <a href="/privacy" className="underline">
-              Privacy policy
-            </a>
-          </p>
         </div>
+        <p className="absolute inset-x-0 bottom-[3vh] text-center text-xs text-ink/60">
+          <a href="/feed" className="underline">Just browsing</a>
+          <span className="mx-2" aria-hidden="true">·</span>
+          <a href="/privacy" className="underline">Privacy</a>
+        </p>
       </section>
     </main>
   );

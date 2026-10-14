@@ -7,9 +7,12 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}/profile`);
+      // Came from a "Forgot password" email: open the set-a-new-password box
+      const sent = data.user?.recovery_sent_at ? new Date(data.user.recovery_sent_at).getTime() : 0;
+      const fromReset = Date.now() - sent < 60 * 60 * 1000;
+      return NextResponse.redirect(`${origin}/profile${fromReset ? "?reset=1" : ""}`);
     }
   }
 
