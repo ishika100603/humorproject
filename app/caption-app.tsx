@@ -45,6 +45,17 @@ type Slot = { url: string; ids: number[]; newest: string };
 
 const NOTE_COLORS = ["#f6eebc", "#f3e9b0", "#f8f1c8", "#efe4a6"];
 
+// "5 minutes ago", "3 hours ago", "2 days ago"
+function timeAgo(ms: number) {
+  const min = Math.max(0, Math.round(ms / 60000));
+  if (min < 1) return "just now";
+  if (min < 60) return `${min} ${min === 1 ? "minute" : "minutes"} ago`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `${h} ${h === 1 ? "hour" : "hours"} ago`;
+  const d = Math.round(h / 24);
+  return `${d} ${d === 1 ? "day" : "days"} ago`;
+}
+
 function buildSlots(rows: FeedRow[]): Slot[] {
   const groups = new Map<string, FeedRow[]>();
   for (const r of rows) groups.set(r.image_url, [...(groups.get(r.image_url) ?? []), r]);
@@ -516,6 +527,9 @@ export default function CaptionApp() {
               seenCount={seenSlots.length}
               countdown={countdown}
               mondayIn={now === null ? 7 : daysUntilMonday(now)}
+              lastPost={
+                now === null || slots.length === 0 ? "" : timeAgo(now - new Date(slots[0].newest).getTime())
+              }
               loggedIn={!!user}
               onToggleSeen={() => {
                 playSound("tap");
@@ -882,6 +896,7 @@ function CaughtUp({
   showSeen,
   seenCount,
   mondayIn,
+  lastPost,
   loggedIn,
   onToggleSeen,
 }: {
@@ -890,6 +905,7 @@ function CaughtUp({
   seenCount: number;
   countdown: string;
   mondayIn: number;
+  lastPost: string;
   loggedIn: boolean;
   onToggleSeen: () => void;
 }) {
@@ -900,7 +916,8 @@ function CaughtUp({
           {showSeen ? "That's every note" : hasNew ? "You're all caught up" : "Nothing new since your last visit"}
         </p>
         <p className="mt-2 text-sm leading-relaxed">
-          New notes show up when someone posts a photo. Star of the week is picked in {mondayIn}{" "}
+          {lastPost && <>Last new note: {lastPost}. </>}
+          New ones show up whenever someone posts a photo. Star of the week is picked in {mondayIn}{" "}
           {mondayIn === 1 ? "day" : "days"}.
         </p>
         {seenCount > 0 && (
