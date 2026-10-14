@@ -38,23 +38,23 @@ const SECTIONS = [
 export default function PrivacyPage() {
   return (
     <main className="grid min-h-[100dvh] w-full lg:h-[100dvh] lg:grid-cols-[2fr_3fr] lg:overflow-hidden">
-      <section className="relative flex flex-col justify-center px-8 pb-[4vh] pt-[10vh] lg:px-[5vw] lg:py-[8vh]">
+      <section className="relative flex flex-col justify-center px-6 pb-[2vh] pt-[8vh] lg:px-[5vw] lg:py-[8vh]">
         <a href="/feed" className="absolute left-6 top-6 text-sm underline lg:left-10">
           ← Back
         </a>
         <h1 className="hand text-[clamp(26px,3vw,40px)] tracking-[0.15em]">Privacy</h1>
-        <p className="mt-3 max-w-sm text-sm text-ink/70">
+        <p className="mt-2 max-w-sm text-xs text-ink/70 sm:text-sm">
           At 116 &amp; Broadway is a student project for a Columbia course. Here&apos;s what it collects and why.
         </p>
-        <p className="mt-6 text-xs text-ink/50">Last updated October 13, 2026</p>
+        <p className="mt-2 text-[11px] text-ink/50 lg:mt-6">Last updated October 13, 2026</p>
       </section>
 
-      <section className="flex items-center bg-tile-face/80 px-8 py-[6vh] lg:border-l lg:border-ink/40 lg:px-[5vw]">
-        <div className="grid w-full gap-x-12 gap-y-[5vh] sm:grid-cols-2">
+      <section className="flex items-center bg-tile-face/80 px-6 py-[3vh] lg:border-l lg:py-[6vh] lg:border-ink/40 lg:px-[5vw]">
+        <div className="grid w-full gap-x-12 gap-y-[2.5vh] sm:grid-cols-2 lg:gap-y-[5vh]">
           {SECTIONS.map((s) => (
             <div key={s.title}>
-              <h2 className="text-sm font-medium">{s.title}</h2>
-              <ul className="mt-2 grid gap-2 text-sm leading-relaxed text-ink/80">
+              <h2 className="text-xs font-medium sm:text-sm">{s.title}</h2>
+              <ul className="mt-1 grid gap-1.5 text-xs leading-relaxed text-ink/80 sm:text-sm">
                 {s.items.map((t) => (
                   <li key={t}>{t}</li>
                 ))}

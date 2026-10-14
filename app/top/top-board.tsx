@@ -17,7 +17,7 @@ const NOTE_COLORS = ["#f6eebc", "#f3e9b0", "#f8f1c8", "#efe4a6"];
 function Medal({ place }: { place: 0 | 1 | 2 }) {
   const m = MEDALS[place];
   return (
-    <svg viewBox="0 0 48 64" className="h-[76px] w-[57px] drop-shadow-sm" role="img" aria-label={`${m.label} place`}>
+    <svg viewBox="0 0 48 64" className="h-full w-auto drop-shadow-sm" role="img" aria-label={`${m.label} place`}>
       <g stroke="#141414" strokeWidth="1.6" strokeLinejoin="round">
         <path d="M14 2 L22 28 L28 26 L20 2 Z" fill={m.ribbon} />
         <path d="M34 2 L26 28 L20 26 L28 2 Z" fill={m.ribbon} />
@@ -31,26 +31,31 @@ function Medal({ place }: { place: 0 | 1 | 2 }) {
   );
 }
 
-function Note({ row, rank, big }: { row: Row; rank: number; big?: boolean }) {
+function Note({ row, rank, size }: { row: Row; rank: number; size: "first" | "podium" | "small" }) {
   const tilt = [-2, 1.5, -1, 2, -1.5][rank % 5];
+  const width = { first: "w-[min(230px,27vh,30vw)]", podium: "w-[min(200px,23vh,26vw)]", small: "w-[min(120px,12vh,13vw)]" }[size];
+  const n = Number(row.score);
   return (
     <a
       href="/feed"
-      className={`note relative block p-3 transition-transform hover:-translate-y-1 ${big ? "pt-5" : ""}`}
+      className={`note relative block shrink-0 transition-transform hover:-translate-y-1 ${width} ${size === "small" ? "p-1.5" : "p-2.5"}`}
       style={{ background: NOTE_COLORS[rank % NOTE_COLORS.length], transform: `rotate(${tilt}deg)` }}
     >
       {rank < 3 ? (
-        <span className="absolute -top-9 left-1/2 -translate-x-1/2">
+        <span className="absolute -top-[5.5vh] left-1/2 h-[7vh] max-h-[76px] -translate-x-1/2">
           <Medal place={rank as 0 | 1 | 2} />
         </span>
       ) : (
-        <span className="absolute -left-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full border border-ink/40 bg-white text-xs">
+        <span className="absolute -left-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-ink/40 bg-white text-[11px]">
           {rank + 1}
         </span>
       )}
       <img src={row.image_url} alt="" className="aspect-square w-full object-cover" />
-      <p className={`mt-2 leading-snug ${big ? "text-base" : "text-sm"}`}>{row.caption}</p>
-      <p className="mt-1 text-xs text-ink/60">+{Number(row.score)} votes</p>
+      <p className={`mt-1.5 line-clamp-2 leading-snug ${size === "small" ? "text-[10px]" : "text-[13px]"}`}>{row.caption}</p>
+      <p className={`text-ink/60 ${size === "small" ? "text-[9px]" : "mt-0.5 text-[11px]"}`}>
+        {n > 0 ? "+" : ""}
+        {n} {Math.abs(n) === 1 ? "vote" : "votes"}
+      </p>
     </a>
   );
 }
@@ -67,9 +72,9 @@ export default function TopBoard() {
       all.forEach((r) => perImage.set(r.image_url, (perImage.get(r.image_url) ?? 0) + 1));
       setRows(
         all
-          .filter((r) => perImage.get(r.image_url) === 1 && Number(r.score) > 0)
+          .filter((r) => perImage.get(r.image_url) === 1)
           .sort((a, b) => Number(b.score) - Number(a.score) || a.created_at.localeCompare(b.created_at))
-          .slice(0, 20)
+          .slice(0, 9)
       );
     })();
   }, []);
@@ -80,8 +85,8 @@ export default function TopBoard() {
   const order = [1, 0, 2].filter((i) => podium[i]);
 
   return (
-    <main className="mx-auto w-full max-w-[1280px] px-5 pb-20 pt-6 sm:px-10">
-      <header className="flex items-center justify-between">
+    <main className="flex h-[100dvh] w-full flex-col overflow-hidden px-5 pt-5 sm:px-10">
+      <header className="flex shrink-0 items-center justify-between">
         <a href="/feed" className="text-sm underline">
           ← Back
         </a>
@@ -90,39 +95,35 @@ export default function TopBoard() {
         </a>
       </header>
 
-      <h1 className="hand mt-10 text-center text-[clamp(24px,3vw,36px)] tracking-[0.15em]">Top captions</h1>
-      <p className="mt-2 text-center text-sm text-ink/60">Ranked by upvotes, all time.</p>
+      <h1 className="hand mt-[2vh] shrink-0 text-center text-[clamp(22px,4.5vh,36px)] tracking-[0.15em]">
+        Top captions
+      </h1>
+      <p className="shrink-0 text-center text-xs text-ink/60">Ranked by upvotes, all time.</p>
 
       {rows === null ? (
-        <div className="mt-16 flex justify-center">
+        <div className="flex flex-1 items-center justify-center">
           <StickMan label="Counting votes…" />
         </div>
       ) : rows.length === 0 ? (
-        <p className="mt-16 text-center text-sm">No upvotes yet. Go vote.</p>
+        <p className="flex flex-1 items-center justify-center text-sm">Nothing posted yet.</p>
       ) : (
-        <>
-          <section className="mx-auto mt-24 grid max-w-[820px] grid-cols-3 items-end gap-4 sm:gap-8">
+        <div className="flex flex-1 flex-col items-center justify-evenly">
+          <section className="flex items-end justify-center gap-[3vw] pt-[6vh]">
             {order.map((i) => (
-              <div key={podium[i].id} className={i === 0 ? "sm:-translate-y-6" : ""}>
-                <Note row={podium[i]} rank={i} big={i === 0} />
+              <div key={podium[i].id} className={i === 0 ? "-translate-y-[3vh]" : ""}>
+                <Note row={podium[i]} rank={i} size={i === 0 ? "first" : "podium"} />
               </div>
             ))}
           </section>
 
           {rest.length > 0 && (
-            <>
-              <div className="mt-16 flex items-center gap-4 text-xs text-ink/60">
-                <span>The rest</span>
-                <span className="h-px flex-1 bg-ink/30" />
-              </div>
-              <section className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                {rest.map((r, i) => (
-                  <Note key={r.id} row={r} rank={i + 3} />
-                ))}
-              </section>
-            </>
+            <section className="flex w-full max-w-[900px] items-start justify-center gap-[2vw] border-t border-ink/20 pt-[2.5vh]">
+              {rest.map((r, i) => (
+                <Note key={r.id} row={r} rank={i + 3} size="small" />
+              ))}
+            </section>
           )}
-        </>
+        </div>
       )}
     </main>
   );
