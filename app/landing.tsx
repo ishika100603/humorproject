@@ -7,25 +7,6 @@ import Menu from "./menu";
 import { JOKES } from "@/lib/jokes";
 
 
-function Clock() {
-  const [t, setT] = useState("");
-  useEffect(() => {
-    const f = () =>
-      setT(
-        new Intl.DateTimeFormat("en-US", {
-          timeZone: "America/New_York",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hourCycle: "h23",
-        }).format(new Date())
-      );
-    f();
-    const i = setInterval(f, 1000);
-    return () => clearInterval(i);
-  }, []);
-  return <span className="tabular-nums">{t}</span>;
-}
 
 
 
@@ -51,11 +32,6 @@ export default function Landing() {
         <div className="flex items-center justify-between gap-4">
           <Menu />
           <div className="flex items-center gap-4">
-            <p className="hidden text-right text-[11px] leading-tight sm:block">
-              116th St &amp; Broadway, NY
-              <br />
-              <Clock />
-            </p>
             <a
               href={loggedIn ? "/profile" : "/login"}
               className="rounded-full bg-[#141414] px-5 py-2 text-sm font-medium text-white transition-transform hover:-translate-y-0.5"
@@ -71,7 +47,9 @@ export default function Landing() {
         <h1 className="hand mt-[2.5vh] text-[clamp(22px,2.6vw,34px)] leading-tight tracking-[0.18em]">
           At 116 &amp; Broadway
         </h1>
-        <p className="mt-[1.5vh] text-sm text-[#141414]/70">Vote on AI captions. Post your own photos.</p>
+        <p className="mt-[2vh] text-[clamp(15px,1.25vw,18px)]">
+          <span className="highlight px-2 py-0.5">Vote on AI captions. Post your own photos.</span>
+        </p>
         <div className="mt-[3vh] flex flex-wrap justify-center gap-3">
           <a href="/feed" className="rounded-full bg-[#141414] px-5 py-2 text-sm text-white transition-colors hover:bg-[#1d4f91]">
             Start voting
