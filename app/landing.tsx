@@ -48,7 +48,7 @@ export default function Landing() {
           At 116 &amp; Broadway
         </h1>
         <p className="mt-[2vh] text-[clamp(15px,1.25vw,18px)]">
-          <span className="highlight px-2 py-0.5">Vote on AI captions. Post your own photos.</span>
+          <span className="highlight px-2 py-0.5">Vote on AI captions. Post your own photos to see how AI captions them.</span>
         </p>
         <div className="mt-[3vh] flex flex-wrap justify-center gap-3">
           <a href="/feed" className="rounded-full bg-[#141414] px-5 py-2 text-sm text-white transition-colors hover:bg-[#1d4f91]">
