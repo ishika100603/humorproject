@@ -105,7 +105,7 @@ export default function NotePerson() {
   const cellW = NOTE_W * scaleGrid + 22;
   const cellH = NOTE_H * scaleGrid + 22;
   const rows = Math.ceil(notes.length / cols);
-  const figW = Math.min(320, width * 0.6, (vh * 0.32) / 0.9);
+  const figW = Math.min(320, width * 0.6, (vh * 0.28) / 0.9);
   const figH = figW * 0.9;
   const height = grid ? rows * cellH + 80 : figH;
   const small = Math.max(0.14, (figW / 520) * 0.3);

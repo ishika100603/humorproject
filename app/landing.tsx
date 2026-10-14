@@ -42,7 +42,7 @@ export default function Landing() {
         </div>
       </header>
 
-      <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 pb-[6vh] pt-[2vh] text-center">
+      <main className="relative z-10 flex flex-1 flex-col items-center justify-center px-4 pb-[3vh] pt-[1vh] text-center">
         <NotePerson />
         <h1 className="hand mt-[2.5vh] text-[clamp(22px,2.6vw,34px)] leading-tight tracking-[0.18em]">
           At 116 &amp; Broadway
@@ -61,7 +61,7 @@ export default function Landing() {
             Post a photo
           </a>
         </div>
-        <div className="mt-[7vh] max-w-xl border-t border-[#141414]/20 pt-[2.5vh] text-sm text-[#141414]/80">
+        <div className="mt-[6vh] max-w-xl border-t border-[#141414]/20 pt-[2.5vh] text-sm text-[#141414]/80">
           <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-[#141414]/50">Joke of the visit</p>
           <p>{JOKES[joke].setup}</p>
           {loggedIn ? (
