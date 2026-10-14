@@ -211,7 +211,7 @@ export default function ProfilePage() {
             <Crown className="h-4 w-4" /> {crowns} {crowns === 1 ? "crown" : "crowns"}
           </p>
         )}
-        <p className="mt-2 text-xs text-ink/50">Only you see this page. Captions never show your name.</p>
+        <p className="mt-2 text-xs text-ink/50">Your name never shows on captions.</p>
       </section>
 
       <section className="relative flex items-center justify-center bg-tile-face/80 px-8 pb-[4vh] pt-[7vh] lg:border-l lg:border-ink/40 lg:px-[6vw] lg:py-[8vh]">

@@ -5,23 +5,23 @@ import { useEffect, useState } from "react";
 const STEPS = [
   {
     title: "Welcome to 116 & Broadway",
-    body: "AI writes the captions. You decide which ones are funny. Takes 30 seconds to learn.",
+    body: "People post photos, AI writes a caption, and you vote on whether it's funny.",
   },
   {
     title: "Vote",
-    body: "Open a note. Thumbs up if it got you, thumbs down if it didn't. Arrow keys flip between notes.",
+    body: "Open a note and hit thumbs up or thumbs down. Use the arrow keys to go to the next one.",
   },
   {
-    title: "Earn crowns",
-    body: "1 crown per vote. Whoever votes the most in a week becomes Star of the week. Check the menu to see who's winning.",
+    title: "Crowns",
+    body: "You get 1 crown per vote. Whoever votes the most in a week is Star of the week.",
   },
   {
-    title: "Post any photo",
-    body: "Your lunch, your roommate's plant, a pigeon with ambition. AI writes the caption. Your name stays off it.",
+    title: "Post a photo",
+    body: "Upload any photo and AI writes the caption. Your name isn't shown.",
   },
   {
-    title: "Come back later",
-    body: "You only see notes you haven't seen. The old ones wait at the bottom.",
+    title: "Next time",
+    body: "You'll only see notes you haven't seen yet. Older ones are at the bottom.",
   },
 ];
 

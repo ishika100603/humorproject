@@ -6,7 +6,6 @@ import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { playSound } from "@/lib/sound";
 import { toast } from "@/lib/toast";
-import { greeting } from "@/lib/jokes";
 import { UPDATES } from "@/lib/updates";
 import Tutorial from "./tutorial";
 import StickMan from "./stickman";
@@ -129,7 +128,6 @@ export default function CaptionApp() {
   const [tutorial, setTutorial] = useState(false);
   const [tick, setTick] = useState(0);
   const [countdown, setCountdown] = useState("");
-  const [hello, setHello] = useState("");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [now, setNow] = useState<number | null>(null);
   const [postOpen, setPostOpen] = useState(false);
@@ -298,7 +296,6 @@ export default function CaptionApp() {
   useEffect(() => {
     const update = () => {
       setCountdown(formatCountdown(msUntilMidnightET()));
-      setHello(greeting());
       setNow(Date.now());
     };
     update();
@@ -431,7 +428,7 @@ export default function CaptionApp() {
             <Rankboard peers={peers} />
             {meme && (
               <section>
-                <h2 className="text-xs text-ink/60">Funniest this week</h2>
+                <h2 className="text-xs text-ink/60">Top caption this week</h2>
                 <p className="mt-1 text-sm leading-snug">“{meme.caption}”</p>
               </section>
             )}
@@ -487,7 +484,7 @@ export default function CaptionApp() {
       <main className="mx-auto w-full max-w-[1680px] px-4 pb-16 pt-4 sm:px-6 lg:px-10">
         <section aria-label="Caption feed" className="min-w-0">
           <p className="mb-6 min-h-[1.5rem] text-sm text-ink/70">
-            {hello} Tap a note and vote. Every vote earns a crown.
+            Tap a note to vote. Each vote is 1 crown.
           </p>
 
           {error && (
@@ -839,13 +836,13 @@ function StarPanel({ star, loggedIn, daysLeft }: { star: Star | null; loggedIn: 
           <span className="text-ink/60"> · {Number(star.star_votes)} votes last week</span>
         </p>
       ) : (
-        <p className="mt-1 text-sm">Nobody yet. Suspicious.</p>
+        <p className="mt-1 text-sm">No one yet.</p>
       )}
       <p className="mt-1 text-xs text-ink/70">
-        Most votes in a week wins a gold star by their name and +5 crowns.
+        Most votes Mon to Sun wins a star next to their name and 5 crowns.
       </p>
       <p className="mt-2 text-xs text-ink/70">
-        {leader ? `This week: ${leader} leads with ${Number(star?.leader_votes)}.` : "This week is wide open."}
+        {leader ? `This week: ${leader}, ${Number(star?.leader_votes)} votes.` : "No votes yet this week."}
         {loggedIn ? ` You have ${mineVotes}.` : ""} {daysLeft} {daysLeft === 1 ? "day" : "days"} left.
       </p>
     </section>
@@ -857,7 +854,7 @@ function Rankboard({ peers }: { peers: Peer[] }) {
     <section>
       <h2 className="text-xs text-ink/60">Rankboard</h2>
       {peers.length === 0 ? (
-        <p className="mt-1 text-sm">Empty. One vote and you&apos;re first.</p>
+        <p className="mt-1 text-sm">No one yet.</p>
       ) : (
         <ol className="mt-2 grid gap-1">
           {peers.slice(0, 10).map((p, i) => (
@@ -906,8 +903,7 @@ function CaughtUp({
           {showSeen ? "That's every note" : hasNew ? "You're all caught up" : "Nothing new since your last visit"}
         </p>
         <p className="mt-2 text-sm leading-relaxed">
-          That&apos;s everything for now. New notes show up when someone posts a photo.
-          {loggedIn ? " Could be you." : " Log in and it could be you."} Star of the week is picked in {mondayIn}{" "}
+          New notes show up when someone posts a photo. Star of the week is picked in {mondayIn}{" "}
           {mondayIn === 1 ? "day" : "days"}.
         </p>
         {seenCount > 0 && (
@@ -1110,7 +1106,7 @@ function CreateCaptions({
           <div className="mt-2">
             <StickMan />
           </div>
-          <p className="mt-2 text-center text-xs text-ink/60">Usually about 10 seconds. It keeps going if you leave.</p>
+          <p className="mt-2 text-center text-xs text-ink/60">Takes about 10 seconds. You can leave this open or go back.</p>
           <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
             <button
               type="button"

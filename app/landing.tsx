@@ -103,7 +103,7 @@ export default function Landing() {
           </a>
         </div>
         <p className="mt-[2.5vh] flex items-center gap-1.5 text-xs text-[#141414]/70">
-          <Crown className="h-3.5 w-3.5" /> Vote on AI captions, earn crowns, post any photo.
+          <Crown className="h-3.5 w-3.5" /> Vote on AI captions. Post your own photos.
         </p>
       </main>
 
