@@ -321,7 +321,7 @@ body {
   to { transform: rotate(22deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .stickman, .sm-leg-a, .sm-leg-b, .sm-arm-b, .note-open, .lightbox { animation: none; }
+  .stickman, .sm-leg-a, .sm-leg-b, .sm-arm-b, .note-open, .lightbox, .lounge-shin-a, .lounge-shin-b, .lounge-head, .lounge-dot, .lounge-eye { animation: none; }
   .stickman { left: 40%; }
 }
 
@@ -409,3 +409,15 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .crown-burst { animation: none; opacity: 0; }
 }
+
+/* Lounging stick figure loader */
+.lounge-shin-a, .lounge-shin-b { transform-box: view-box; transform-origin: 42px 32px; }
+.lounge-shin-a { animation: lounge-kick 0.7s ease-in-out infinite alternate; }
+.lounge-shin-b { animation: lounge-kick 0.7s ease-in-out infinite alternate-reverse; }
+@keyframes lounge-kick { from { transform: rotate(-14deg); } to { transform: rotate(16deg); } }
+.lounge-head { transform-box: view-box; transform-origin: 90px 48px; animation: lounge-nod 2.4s ease-in-out infinite; }
+@keyframes lounge-nod { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-5deg); } }
+.lounge-eye { transform-box: fill-box; transform-origin: center; animation: lounge-blink 3.2s infinite; }
+@keyframes lounge-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+.lounge-dot { animation: lounge-dot 1.2s ease-in-out infinite; opacity: 0.2; }
+@keyframes lounge-dot { 0%, 100% { opacity: 0.2; } 40% { opacity: 1; } }

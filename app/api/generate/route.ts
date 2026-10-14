@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 // Tried in order. If Google says a model is busy or missing, we move to the next one.
 const MODELS = Array.from(
   new Set(
-    [process.env.GEMINI_MODEL, "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite"].filter(
+    [process.env.GEMINI_MODEL, "gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.5-flash-lite"].filter(
       Boolean
     ) as string[]
   )
@@ -91,7 +91,10 @@ export async function POST(request: Request) {
   let geminiRes: Response | null = null;
   let usedModel = MODELS[0];
   let lastStatus = 0;
-  outer: for (const model of MODELS) {
+  let sawBusy = false;
+  const queue = [...MODELS];
+  outer: for (let m = 0; m < queue.length && m < 6; m++) {
+    const model = queue[m];
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const res = await fetch(
@@ -108,12 +111,19 @@ export async function POST(request: Request) {
           break outer;
         }
         lastStatus = res.status;
-        console.error("Gemini error", model, res.status, (await res.text()).slice(0, 500));
-        // Busy: wait and retry once, then try the next model. Missing model: next model.
-        if (res.status === 404) break;
+        if (RETRYABLE.has(res.status)) sawBusy = true;
+        const detail = await res.text();
+        console.error("Gemini error", model, res.status, detail.slice(0, 500));
+        // Retired model: Google names the replacement, so queue it up and move on
+        if (res.status === 404) {
+          const hint = detail.match(/use models\/([\w.-]+)/)?.[1];
+          if (hint && !queue.includes(hint)) queue.push(hint);
+          break;
+        }
         if (!RETRYABLE.has(res.status)) break outer;
       } catch (e) {
         lastStatus = 503;
+        sawBusy = true;
         console.error("Gemini fetch failed", model, e);
       }
       if (attempt === 0) await sleep(1200);
@@ -121,7 +131,7 @@ export async function POST(request: Request) {
   }
 
   if (!geminiRes) {
-    const busy = RETRYABLE.has(lastStatus);
+    const busy = sawBusy || RETRYABLE.has(lastStatus);
     return NextResponse.json(
       {
         error: busy
