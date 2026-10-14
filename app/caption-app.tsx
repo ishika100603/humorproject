@@ -512,7 +512,7 @@ export default function CaptionApp() {
             </div>
           )}
 
-          <div className="min-h-[calc(100dvh-170px)]">
+          <div className={visible.length > 0 ? "min-h-[calc(100dvh-170px)]" : ""}>
           {weeks.map((w, wi) => (
             <div key={w.key} className={wi > 0 ? "mt-10" : ""}>
               <div className="mb-5 flex items-center gap-3 text-xs text-ink/60">
@@ -540,6 +540,7 @@ export default function CaptionApp() {
 
           {!loading && (
             <CaughtUp
+              immediate={visible.length === 0}
               hasNew={newSlots.length > 0}
               showSeen={showSeen}
               seenCount={seenSlots.length}
@@ -911,6 +912,7 @@ function Rankboard({ peers }: { peers: Peer[] }) {
 }
 
 function CaughtUp({
+  immediate,
   hasNew,
   showSeen,
   seenCount,
@@ -919,6 +921,7 @@ function CaughtUp({
   loggedIn,
   onToggleSeen,
 }: {
+  immediate: boolean;
   hasNew: boolean;
   showSeen: boolean;
   seenCount: number;
@@ -930,14 +933,15 @@ function CaughtUp({
 }) {
   // Only appears once you scroll down to it
   const ref = useRef<HTMLDivElement>(null);
-  const [seen, setSeen] = useState(false);
+  const [seen, setSeen] = useState(immediate);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (immediate) return setSeen(true);
     const io = new IntersectionObserver(([e]) => e.isIntersecting && setSeen(true), { threshold: 0.4 });
     io.observe(el);
     return () => io.disconnect();
-  }, []);
+  }, [immediate]);
 
   return (
     <div ref={ref} className={`mt-12 flex justify-center transition-all duration-700 ${seen ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"}`}>
