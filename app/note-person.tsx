@@ -147,6 +147,29 @@ export default function NotePerson() {
             <GooglyEyes />
           </div>
         </div>
+        {!grid && (
+          // Small "i" by the head; the tip shows on hover or keyboard focus
+          <span
+            className="group absolute left-[72%] top-[4%] z-[80]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              aria-label="How the notes work"
+              aria-describedby="notes-tip"
+              className="flex h-6 w-6 items-center justify-center rounded-full border border-[#141414] bg-white font-serif text-xs italic text-[#141414] hover:bg-[#141414] hover:text-white"
+            >
+              i
+            </button>
+            <span
+              id="notes-tip"
+              role="tooltip"
+              className="pointer-events-none absolute left-8 top-1/2 w-52 -translate-y-1/2 rounded-md border border-[#141414]/20 bg-white px-3 py-2 text-left text-xs leading-snug text-[#141414] opacity-0 shadow-sm transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+            >
+              Hover a note to read it. Click the guy to spread them all out.
+            </span>
+          </span>
+        )}
 
         {notes.map((text, i) => {
           const col = i % cols;
@@ -176,8 +199,8 @@ export default function NotePerson() {
           );
         })}
       </div>
-      <p className="mt-2 text-center text-xs text-[#141414]/60">
-        {grid ? (
+      {grid && (
+        <p className="mt-2 text-center text-xs">
           <button
             onClick={() => {
               playSound("tap");
@@ -187,10 +210,8 @@ export default function NotePerson() {
           >
             Stick them back on
           </button>
-        ) : (
-          "Hover a note to read it. Click or tap to spread them all out."
-        )}
-      </p>
+        </p>
+      )}
     </div>
   );
 }

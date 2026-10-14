@@ -3,6 +3,7 @@ import { Archivo, Patrick_Hand_SC } from "next/font/google";
 import "./globals.css";
 import Splash from "./splash";
 import Toasts from "./toasts";
+import Music from "./music";
 
 // One family, used at different widths: condensed for signs, normal for reading
 const archivo = Archivo({
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <Splash />
         {children}
         <Toasts />
+        <Music />
       </body>
     </html>
   );

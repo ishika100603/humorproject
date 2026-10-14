@@ -573,7 +573,7 @@ export default function CaptionApp() {
       {user && !postOpen && (job.phase === "working" || job.phase === "error") && (
         <button
           onClick={() => setPostOpen(true)}
-          className={`pop fixed bottom-5 left-5 z-40 flex items-center gap-2 rounded-full border bg-white px-4 py-2 text-sm shadow-sm ${
+          className={`pop fixed bottom-5 left-16 z-40 flex items-center gap-2 rounded-full border bg-white px-4 py-2 text-sm shadow-sm ${
             job.phase === "error" ? "border-brick text-brick" : "border-ink/30"
           }`}
         >
