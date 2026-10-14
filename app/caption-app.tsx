@@ -133,6 +133,13 @@ export default function CaptionApp() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [now, setNow] = useState<number | null>(null);
   const [postOpen, setPostOpen] = useState(false);
+  // Caption job status, so it can keep running after the popup is closed
+  const [job, setJob] = useState<{ phase: string; pct: number }>({ phase: "idle", pct: 0 });
+  const onJob = useCallback(
+    (phase: string, pct: number) =>
+      setJob((j) => (j.phase === phase && j.pct === pct ? j : { phase, pct })),
+    []
+  );
   const [tossed, setTossed] = useState(false);
   const [mine, setMine] = useState<MyPoints | null>(null);
   const [peers, setPeers] = useState<Peer[]>([]);
@@ -537,21 +544,43 @@ export default function CaptionApp() {
 
       <Mascot onThrow={() => setTossed(true)} onHelp={() => setTutorial(true)} />
 
-      {postOpen && user && (
+      {user && (
         <div
-          className="lightbox fixed inset-0 z-50 flex items-center justify-center bg-[#b9d9eb]/90 p-4 backdrop-blur-sm"
+          className={`lightbox fixed inset-0 z-50 items-center justify-center bg-[#b9d9eb]/90 p-4 backdrop-blur-sm ${postOpen ? "flex" : "hidden"}`}
           role="dialog"
           aria-modal="true"
           aria-label="Post a photo"
+          aria-hidden={!postOpen}
           onClick={() => setPostOpen(false)}
         >
           <div className="note-open w-[min(340px,100%)]" onClick={(e) => e.stopPropagation()}>
-            <CreateCaptions userId={user.id} onCreated={onCreated} />
-            <button onClick={() => setPostOpen(false)} className="mt-3 w-full text-center text-sm underline">
-              Close
-            </button>
+            <CreateCaptions
+              userId={user.id}
+              onCreated={onCreated}
+              onBack={() => setPostOpen(false)}
+              onStatus={onJob}
+            />
           </div>
         </div>
+      )}
+
+      {/* Still writing in the background: a small pill to check on it */}
+      {user && !postOpen && (job.phase === "working" || job.phase === "error") && (
+        <button
+          onClick={() => setPostOpen(true)}
+          className={`pop fixed bottom-5 left-5 z-40 flex items-center gap-2 rounded-full border bg-white px-4 py-2 text-sm shadow-sm ${
+            job.phase === "error" ? "border-brick text-brick" : "border-ink/30"
+          }`}
+        >
+          {job.phase === "working" ? (
+            <>
+              <span className="h-2 w-2 animate-pulse rounded-full bg-teal" />
+              Writing your caption… {job.pct}%
+            </>
+          ) : (
+            "Caption didn't go through. Tap to retry"
+          )}
+        </button>
       )}
 
       {openIndex !== null && visible[openIndex] && (
@@ -894,9 +923,13 @@ function CaughtUp({
 function CreateCaptions({
   userId,
   onCreated,
+  onBack,
+  onStatus,
 }: {
   userId: string;
   onCreated: (ids: number[]) => void;
+  onBack: () => void;
+  onStatus: (phase: string, pct: number) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -987,7 +1020,11 @@ function CreateCaptions({
     const json = await res.json().catch(() => ({}));
     if (controller.signal.aborted) return;
     if (!res.ok) {
-      fail(`${json.error ?? "That didn't work. Try again."} Still stuck? Email ${CONTACT}.`);
+      fail(
+        json.error
+          ? `${json.error} Still stuck? Email ${CONTACT}.`
+          : "The caption AI took too long. Try again in a minute."
+      );
       return;
     }
 
@@ -1017,10 +1054,18 @@ function CreateCaptions({
 
   const working = phase === "working";
   const pct = Math.round(progress);
+  useEffect(() => {
+    onStatus(phase, pct);
+  }, [phase, pct, onStatus]);
 
   return (
     <form ref={formRef} onSubmit={generate} className="note p-4" style={{ background: "#f8f1c8" }}>
-      <h2 className="mb-3 text-sm">Caption a photo</h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm">Caption a photo</h2>
+        <button type="button" onClick={onBack} className="text-xs text-ink/60 underline hover:text-ink">
+          ← Back to the feed
+        </button>
+      </div>
 
       <label
         className={`flex items-center gap-3 text-sm ${
@@ -1065,16 +1110,23 @@ function CreateCaptions({
           <div className="mt-2">
             <StickMan />
           </div>
-          <p className="mt-3 text-sm">
-            Usually takes about 10 seconds. You can keep scrolling the feed while you wait, or stop it.
-          </p>
-          <button
-            type="button"
-            onClick={cancel}
-            className="mt-3 w-full rounded-md border border-ink px-4 py-2 font-normal hover:bg-ink hover:text-white"
-          >
-            Stop generating
-          </button>
+          <p className="mt-2 text-center text-xs text-ink/60">Usually about 10 seconds. It keeps going if you leave.</p>
+          <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+            <button
+              type="button"
+              onClick={onBack}
+              className="rounded-md bg-ink px-4 py-2 text-sm text-white hover:bg-teal"
+            >
+              Back to the feed
+            </button>
+            <button
+              type="button"
+              onClick={cancel}
+              className="rounded-md border border-ink/40 px-3 py-2 text-sm hover:border-ink"
+            >
+              Stop
+            </button>
+          </div>
         </div>
       ) : (
         <button

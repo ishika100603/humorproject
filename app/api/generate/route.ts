@@ -2,15 +2,15 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 // Tried in order. If Google says a model is busy or missing, we move to the next one.
+// Tried in order. Lite is fast and usually free when the main model is busy.
 const MODELS = Array.from(
   new Set(
-    [process.env.GEMINI_MODEL, "gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.5-flash-lite"].filter(
+    [process.env.GEMINI_MODEL, "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.8-flash"].filter(
       Boolean
     ) as string[]
   )
 );
 const RETRYABLE = new Set([429, 500, 502, 503, 504]);
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export const maxDuration = 60;
 
@@ -93,41 +93,42 @@ export async function POST(request: Request) {
   let lastStatus = 0;
   let sawBusy = false;
   const queue = [...MODELS];
-  outer: for (let m = 0; m < queue.length && m < 6; m++) {
+  // Vercel stops the function at 60s, so every Gemini call gets a time limit
+  const deadline = Date.now() + 50_000;
+  for (let m = 0; m < queue.length && m < 6; m++) {
     const model = queue[m];
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-            body: requestBody,
-          }
-        );
-        if (res.ok) {
-          geminiRes = res;
-          usedModel = model;
-          break outer;
+    const left = deadline - Date.now();
+    if (left < 3_000) break;
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          body: requestBody,
+          signal: AbortSignal.timeout(Math.min(22_000, left)),
         }
-        lastStatus = res.status;
-        if (RETRYABLE.has(res.status)) sawBusy = true;
-        const detail = await res.text();
-        console.error("Gemini error", model, res.status, detail.slice(0, 500));
-        // Retired model: Google names the replacement, so queue it up and move on
-        if (res.status === 404) {
-          const hint = detail.match(/use models\/([\w.-]+)/)?.[1];
-          if (hint && !queue.includes(hint)) queue.push(hint);
-          break;
-        }
-        if (!RETRYABLE.has(res.status)) break outer;
-      } catch (e) {
-        lastStatus = 503;
-        sawBusy = true;
-        console.error("Gemini fetch failed", model, e);
+      );
+      if (res.ok) {
+        geminiRes = res;
+        usedModel = model;
+        break;
       }
-      if (attempt === 0) await sleep(1200);
+      lastStatus = res.status;
+      if (RETRYABLE.has(res.status)) sawBusy = true;
+      const detail = await res.text();
+      console.error("Gemini error", model, res.status, detail.slice(0, 500));
+      // Retired model: Google names the replacement, so queue it up
+      if (res.status === 404) {
+        const hint = detail.match(/use models\/([\w.-]+)/)?.[1];
+        if (hint && !queue.includes(hint)) queue.push(hint);
+      }
+    } catch (e) {
+      lastStatus = 504;
+      sawBusy = true;
+      console.error("Gemini call failed or timed out", model, String(e).slice(0, 200));
     }
+    // Busy or slow: move straight on to the next model
   }
 
   if (!geminiRes) {
