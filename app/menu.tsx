@@ -1,6 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+
+const LINKS: [string, string, string?][] = [
+  ["/", "Home"],
+  ["/feed", "Vote on captions"],
+  ["/feed?post=1", "Post a photo", "post"],
+  ["/top", "Top captions"],
+  ["/feed?tour=1", "How it works", "tour"],
+  ["/profile", "My profile"],
+];
 
 // Three-line menu button that opens a slim panel from the left
 export default function Menu({
@@ -51,12 +61,24 @@ export default function Menu({
               <span className="hand ml-auto text-sm tracking-[0.15em]">At 116 &amp; Broadway</span>
             </div>
             <ul className="grid gap-3 text-base">
-              <li><a href="/" className="hover:underline">Home</a></li>
-              <li><a href="/feed" className="hover:underline">Vote on captions</a></li>
-              <li><a href="/feed?post=1" className="hover:underline">Post a photo</a></li>
-              <li><a href="/top" className="hover:underline">Top captions</a></li>
-              <li><a href="/feed?tour=1" className="hover:underline">How it works</a></li>
-              <li><a href="/profile" className="hover:underline">My profile</a></li>
+              {LINKS.map(([href, label, action]) => (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    className="hover:underline"
+                    onClick={(e) => {
+                      setOpen(false);
+                      // Already on the feed: open the popup without reloading
+                      if (action && window.location.pathname === "/feed") {
+                        e.preventDefault();
+                        window.dispatchEvent(new CustomEvent("feed-action", { detail: action }));
+                      }
+                    }}
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
             </ul>
             {children}
           </nav>

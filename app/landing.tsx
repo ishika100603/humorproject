@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import NotePerson from "./note-person";
@@ -32,12 +33,12 @@ export default function Landing() {
         <div className="flex items-center justify-between gap-4">
           <Menu />
           <div className="flex items-center gap-4">
-            <a
+            <Link
               href={loggedIn ? "/profile" : "/login"}
               className="rounded-full bg-[#141414] px-5 py-2 text-sm font-medium text-white transition-transform hover:-translate-y-0.5"
             >
               {loggedIn ? "My profile" : "Log in / Sign up"}
-            </a>
+            </Link>
           </div>
         </div>
       </header>
@@ -51,15 +52,15 @@ export default function Landing() {
           <span className="highlight px-2 py-0.5">Vote on AI-made memes. Post your own photo and see what joke the AI makes.</span>
         </p>
         <div className="mt-[3vh] flex flex-wrap justify-center gap-3">
-          <a href="/feed" className="rounded-full bg-[#141414] px-5 py-2 text-sm text-white transition-colors hover:bg-[#1d4f91]">
+          <Link href="/feed" className="rounded-full bg-[#141414] px-5 py-2 text-sm text-white transition-colors hover:bg-[#1d4f91]">
             Start voting
-          </a>
-          <a
+          </Link>
+          <Link
             href={loggedIn ? "/feed?post=1" : "/login"}
             className="rounded-full border border-[#141414] px-5 py-2 text-sm transition-colors hover:bg-white"
           >
             Post a photo
-          </a>
+          </Link>
         </div>
         <div className="mt-[6vh] max-w-xl border-t border-[#141414]/20 pt-[2.5vh] text-sm text-[#141414]/80">
           <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-[#141414]/50">Joke of the visit</p>
@@ -77,7 +78,7 @@ export default function Landing() {
               <span aria-hidden className="mr-2 select-none blur-[5px]">
                 {"so the punchline is about this long"}
               </span>
-              <a href="/login" className="underline">Log in to read the punchline</a>
+              <Link href="/login" className="underline">Log in to read the punchline</Link>
             </p>
           )}
         </div>

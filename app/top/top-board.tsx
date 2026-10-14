@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import StickMan from "../stickman";
@@ -36,7 +37,7 @@ function Note({ row, rank, size }: { row: Row; rank: number; size: "first" | "po
   const width = { first: "w-[min(230px,27vh,30vw)]", podium: "w-[min(200px,23vh,26vw)]", small: "w-[min(120px,12vh,13vw)]" }[size];
   const n = Number(row.score);
   return (
-    <a
+    <Link
       href="/feed"
       className={`note relative block shrink-0 transition-transform hover:-translate-y-1 ${width} ${size === "small" ? "p-1.5" : "p-2.5"}`}
       style={{ background: NOTE_COLORS[rank % NOTE_COLORS.length], transform: `rotate(${tilt}deg)` }}
@@ -56,7 +57,7 @@ function Note({ row, rank, size }: { row: Row; rank: number; size: "first" | "po
         {n > 0 ? "+" : ""}
         {n} {Math.abs(n) === 1 ? "vote" : "votes"}
       </p>
-    </a>
+    </Link>
   );
 }
 
@@ -87,12 +88,12 @@ export default function TopBoard() {
   return (
     <main className="flex h-[100dvh] w-full flex-col overflow-hidden px-5 pt-5 sm:px-10">
       <header className="flex shrink-0 items-center justify-between">
-        <a href="/feed" className="text-sm underline">
+        <Link href="/feed" className="text-sm underline">
           ← Back
-        </a>
-        <a href="/" className="hand text-sm tracking-[0.15em]">
+        </Link>
+        <Link href="/" className="hand text-sm tracking-[0.15em]">
           At 116 &amp; Broadway
-        </a>
+        </Link>
       </header>
 
       <h1 className="hand mt-[2vh] shrink-0 text-center text-[clamp(22px,4.5vh,36px)] tracking-[0.15em]">

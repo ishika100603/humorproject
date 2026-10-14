@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -39,9 +40,9 @@ export default function PrivacyPage() {
   return (
     <main className="grid min-h-[100dvh] w-full lg:h-[100dvh] lg:grid-cols-[2fr_3fr] lg:overflow-hidden">
       <section className="relative flex flex-col justify-center px-6 pb-[2vh] pt-[8vh] lg:px-[5vw] lg:py-[8vh]">
-        <a href="/feed" className="absolute left-6 top-6 text-sm underline lg:left-10">
+        <Link href="/feed" className="absolute left-6 top-6 text-sm underline lg:left-10">
           ← Back
-        </a>
+        </Link>
         <h1 className="hand text-[clamp(26px,3vw,40px)] tracking-[0.15em]">Privacy</h1>
         <p className="mt-2 max-w-sm text-xs text-ink/70 sm:text-sm">
           At 116 &amp; Broadway is a student project for a Columbia course. Here&apos;s what it collects and why.

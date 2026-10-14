@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -134,9 +135,9 @@ export default function LoginPage() {
   return (
     <main className="grid min-h-[100dvh] w-full lg:h-[100dvh] lg:grid-cols-2 lg:overflow-hidden">
       <section className="relative flex flex-col items-center justify-center px-6 pb-4 pt-12 lg:px-16 lg:pt-6">
-        <a href="/" className="absolute left-6 top-6 text-sm underline lg:left-10">
+        <Link href="/" className="absolute left-6 top-6 text-sm underline lg:left-10">
           ← Back
-        </a>
+        </Link>
         <div className="h-[min(18vw,26vh)] w-[min(34vw,48vh)] min-h-[90px] min-w-[170px]">
           <GooglyEyes />
         </div>
@@ -240,7 +241,7 @@ export default function LoginPage() {
 
         </div>
         <p className="absolute inset-x-0 bottom-[3vh] text-center text-xs text-ink/60">
-          <a href="/feed" className="underline">Just browsing</a>
+          <Link href="/feed" className="underline">Just browsing</Link>
         </p>
       </section>
     </main>

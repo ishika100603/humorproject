@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { startMusic, stopMusic } from "@/lib/music";
+import { isMusicPlaying, startMusic, stopMusic } from "@/lib/music";
 
 const KEY = "bg-music";
 
@@ -17,7 +17,8 @@ export default function Music() {
     } catch {}
     setOn(saved === "on");
     if (saved !== "on") return;
-    const begin = () => {
+    const begin = (e: Event) => {
+      if ((e.target as HTMLElement | null)?.closest?.("[data-music-toggle]")) return;
       startMusic();
       window.removeEventListener("pointerdown", begin);
       window.removeEventListener("keydown", begin);
@@ -31,6 +32,11 @@ export default function Music() {
   }, []);
 
   const toggle = () => {
+    // Set to "on" but not started yet (no click so far): start it instead of switching off
+    if (on && !isMusicPlaying()) {
+      startMusic();
+      return;
+    }
     const next = !on;
     setOn(next);
     try {
@@ -42,6 +48,7 @@ export default function Music() {
 
   return (
     <button
+      data-music-toggle
       onClick={toggle}
       aria-pressed={on}
       aria-label={on ? "Turn music off" : "Turn music on"}

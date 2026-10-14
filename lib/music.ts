@@ -145,3 +145,7 @@ export function stopMusic() {
     master.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
   }
 }
+
+export function isMusicPlaying() {
+  return timer !== null;
+}

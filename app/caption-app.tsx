@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
@@ -254,6 +255,20 @@ export default function CaptionApp() {
     } catch {}
   }, [fetchFeed, loadLeaders, loadPoints]);
 
+  // Menu links on the feed itself open these without a page reload
+  useEffect(() => {
+    const onAction = (e: Event) => {
+      const action = (e as CustomEvent<string>).detail;
+      if (action === "post") {
+        if (user) setPostOpen(true);
+        else router.push("/login");
+      }
+      if (action === "tour") setTutorial(true);
+    };
+    window.addEventListener("feed-action", onAction);
+    return () => window.removeEventListener("feed-action", onAction);
+  }, [user, router]);
+
   // ---------- seen tracking ----------
   const flushSeen = useCallback(async () => {
     const ids = [...pendingSeen.current];
@@ -445,9 +460,9 @@ export default function CaptionApp() {
               {soundOn ? "Turn sound off" : "Turn sound on"}
             </button>
           </Menu>
-          <a href="/" className="hand text-base tracking-[0.15em]">
+          <Link href="/" className="hand text-base tracking-[0.15em]">
             At 116 &amp; Broadway
-          </a>
+          </Link>
         </div>
         <div className="flex items-center gap-2">
           {user ? (
@@ -473,9 +488,9 @@ export default function CaptionApp() {
           >
             Post a photo
           </button>
-          <a href={user ? "/profile" : "/login"} className="rounded-full bg-ink px-4 py-1.5 text-sm text-white hover:bg-teal">
+          <Link href={user ? "/profile" : "/login"} className="rounded-full bg-ink px-4 py-1.5 text-sm text-white hover:bg-teal">
             {user ? "Profile" : "Log in"}
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -829,7 +844,7 @@ function CrownsPanel({ mine, loggedIn }: { mine: MyPoints | null; loggedIn: bool
         </>
       ) : (
         <p className="mt-1 text-sm">
-          <a href="/login" className="underline">Log in</a> and every vote earns one.
+          <Link href="/login" className="underline">Log in</Link> and every vote earns one.
         </p>
       )}
     </section>
