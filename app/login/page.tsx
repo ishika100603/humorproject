@@ -133,7 +133,10 @@ export default function LoginPage() {
 
   return (
     <main className="grid min-h-[100dvh] w-full lg:h-[100dvh] lg:grid-cols-2 lg:overflow-hidden">
-      <section className="flex flex-col items-center justify-center px-6 py-6 lg:px-16">
+      <section className="relative flex flex-col items-center justify-center px-6 pb-4 pt-12 lg:px-16 lg:pt-6">
+        <a href="/" className="absolute left-6 top-6 text-sm underline lg:left-10">
+          ← Back
+        </a>
         <div className="h-[min(18vw,26vh)] w-[min(34vw,48vh)] min-h-[90px] min-w-[170px]">
           <GooglyEyes />
         </div>
@@ -143,7 +146,7 @@ export default function LoginPage() {
         </p>
       </section>
 
-      <section className="relative flex items-center justify-center bg-tile-face/80 px-8 py-[8vh] lg:border-l lg:border-ink/40 lg:px-[6vw]">
+      <section className="relative flex items-center justify-center bg-tile-face/80 px-8 py-[6vh] lg:py-[8vh] lg:border-l lg:border-ink/40 lg:px-[6vw]">
         <div className="w-full max-w-[340px]">
           <div className="mb-[1.5vh] hidden h-[min(64px,8vh)] w-[min(128px,16vh)] [@media(min-height:640px)]:block">
             <LogBox state={logState} />

@@ -40,7 +40,7 @@ export default function PrivacyPage() {
     <main className="grid min-h-[100dvh] w-full lg:h-[100dvh] lg:grid-cols-[2fr_3fr] lg:overflow-hidden">
       <section className="relative flex flex-col justify-center px-8 pb-[4vh] pt-[10vh] lg:px-[5vw] lg:py-[8vh]">
         <a href="/feed" className="absolute left-6 top-6 text-sm underline lg:left-10">
-          ← Back to the feed
+          ← Back
         </a>
         <h1 className="hand text-[clamp(26px,3vw,40px)] tracking-[0.15em]">Privacy</h1>
         <p className="mt-3 max-w-sm text-sm text-ink/70">

@@ -180,7 +180,7 @@ export default function ProfilePage() {
     <main className="grid min-h-[100dvh] w-full lg:h-[100dvh] lg:grid-cols-2 lg:overflow-hidden">
       <section className="relative flex flex-col items-center justify-center px-8 pb-[3vh] pt-[9vh] text-center lg:py-[8vh]">
         <a href="/feed" className="absolute left-6 top-6 text-sm underline lg:left-10">
-          ← Back to captions
+          ← Back
         </a>
         <label className="group relative cursor-pointer" title="Change photo">
           {profile.avatar_url ? (

@@ -83,7 +83,7 @@ export default function TopBoard() {
     <main className="mx-auto w-full max-w-[1280px] px-5 pb-20 pt-6 sm:px-10">
       <header className="flex items-center justify-between">
         <a href="/feed" className="text-sm underline">
-          ← Back to the feed
+          ← Back
         </a>
         <a href="/" className="hand text-sm tracking-[0.15em]">
           At 116 &amp; Broadway

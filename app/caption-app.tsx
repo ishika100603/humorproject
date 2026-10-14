@@ -537,6 +537,12 @@ export default function CaptionApp() {
           aria-hidden={!postOpen}
           onClick={() => setPostOpen(false)}
         >
+          <button
+            onClick={(e) => { e.stopPropagation(); setPostOpen(false); }}
+            className="absolute left-5 top-5 text-sm underline sm:left-8 sm:top-6"
+          >
+            ← Back
+          </button>
           <div className="note-open w-[min(340px,100%)]" onClick={(e) => e.stopPropagation()}>
             <CreateCaptions
               userId={user.id}
@@ -676,6 +682,12 @@ function Lightbox({
       aria-label="Caption note"
       onClick={onClose}
     >
+      <button
+        onClick={(e) => { e.stopPropagation(); onClose(); }}
+        className="absolute left-5 top-5 text-sm underline sm:left-8 sm:top-6"
+      >
+        ← Back
+      </button>
       <button className={arrow} disabled={prev === null} onClick={(e) => { e.stopPropagation(); if (prev !== null) onMove(prev); }} aria-label="Previous note">
         ←
       </button>
@@ -699,9 +711,7 @@ function Lightbox({
           <span>
             {index + 1} / {slots.length}
           </span>
-          <button onClick={onClose} className="hover:text-ink">
-            Close (Esc)
-          </button>
+          <span>Esc to close</span>
         </div>
       </div>
 
@@ -1045,9 +1055,7 @@ function CreateCaptions({
     <form ref={formRef} onSubmit={generate} className="note p-4" style={{ background: "#f8f1c8" }}>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm">Caption a photo</h2>
-        <button type="button" onClick={onBack} className="text-xs text-ink/60 underline hover:text-ink">
-          ← Back to the feed
-        </button>
+
       </div>
 
       <label

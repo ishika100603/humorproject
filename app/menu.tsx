@@ -44,11 +44,11 @@ export default function Menu({
         <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Menu">
           <div className="lightbox absolute inset-0 bg-[#141414]/20" onClick={() => setOpen(false)} />
           <nav className="menu-in absolute inset-y-0 left-0 flex w-[min(320px,85vw)] flex-col gap-8 overflow-y-auto bg-[#eef6fb] px-7 py-6 text-[#141414]">
-            <div className="flex items-center justify-between">
-              <span className="hand text-base tracking-[0.15em]">At 116 &amp; Broadway</span>
-              <button onClick={() => setOpen(false)} aria-label="Close menu" className="text-xl leading-none text-[#141414]/60 hover:text-[#141414]">
-                ×
+            <div className="flex items-center gap-3">
+              <button onClick={() => setOpen(false)} aria-label="Close menu" className="text-sm underline">
+                ← Back
               </button>
+              <span className="hand ml-auto text-sm tracking-[0.15em]">At 116 &amp; Broadway</span>
             </div>
             <ul className="grid gap-3 text-base">
               <li><a href="/" className="hover:underline">Home</a></li>

@@ -55,6 +55,9 @@ export default function Tutorial({ onClose }: { onClose: () => void }) {
       aria-modal="true"
       aria-labelledby="tutorial-title"
     >
+      <button onClick={onClose} className="absolute left-5 top-5 text-sm underline sm:left-8 sm:top-6">
+        ← Back
+      </button>
       <div className="w-full max-w-sm rounded-lg border border-ink/20 bg-white px-7 py-6 shadow-sm">
         <p className="text-xs text-ink/50">
           {step + 1} of {STEPS.length}

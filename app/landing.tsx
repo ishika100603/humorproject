@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import NotePerson from "./note-person";
 import Menu from "./menu";
-import Crown from "./crown";
 import { JOKES } from "@/lib/jokes";
 
 
@@ -72,7 +71,20 @@ export default function Landing() {
         <h1 className="hand mt-[2.5vh] text-[clamp(22px,2.6vw,34px)] leading-tight tracking-[0.18em]">
           At 116 &amp; Broadway
         </h1>
-        <div className="mt-[2vh] max-w-xl text-base">
+        <p className="mt-[1.5vh] text-sm text-[#141414]/70">Vote on AI captions. Post your own photos.</p>
+        <div className="mt-[3vh] flex flex-wrap justify-center gap-3">
+          <a href="/feed" className="rounded-full bg-[#141414] px-5 py-2 text-sm text-white transition-colors hover:bg-[#1d4f91]">
+            Start voting
+          </a>
+          <a
+            href={loggedIn ? "/feed?post=1" : "/login"}
+            className="rounded-full border border-[#141414] px-5 py-2 text-sm transition-colors hover:bg-white"
+          >
+            Post a photo
+          </a>
+        </div>
+        <div className="mt-[7vh] max-w-xl border-t border-[#141414]/20 pt-[2.5vh] text-sm text-[#141414]/80">
+          <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-[#141414]/50">Joke of the visit</p>
           <p>{JOKES[joke].setup}</p>
           {loggedIn ? (
             shown ? (
@@ -91,20 +103,6 @@ export default function Landing() {
             </p>
           )}
         </div>
-        <div className="mt-[3vh] flex flex-wrap justify-center gap-3">
-          <a href="/feed" className="rounded-full bg-[#141414] px-5 py-2 text-sm text-white transition-colors hover:bg-[#1d4f91]">
-            Start voting
-          </a>
-          <a
-            href={loggedIn ? "/feed?post=1" : "/login"}
-            className="rounded-full border border-[#141414] px-5 py-2 text-sm transition-colors hover:bg-white"
-          >
-            Post a photo
-          </a>
-        </div>
-        <p className="mt-[2.5vh] flex items-center gap-1.5 text-xs text-[#141414]/70">
-          <Crown className="h-3.5 w-3.5" /> Vote on AI captions. Post your own photos.
-        </p>
       </main>
 
     </div>
