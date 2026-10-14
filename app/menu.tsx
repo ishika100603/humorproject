@@ -54,6 +54,7 @@ export default function Menu({
               <li><a href="/" className="hover:underline">Home</a></li>
               <li><a href="/feed" className="hover:underline">Vote on captions</a></li>
               <li><a href="/feed?post=1" className="hover:underline">Post a photo</a></li>
+              <li><a href="/top" className="hover:underline">Top captions</a></li>
               <li><a href="/feed?tour=1" className="hover:underline">How it works</a></li>
               <li><a href="/profile" className="hover:underline">My profile</a></li>
             </ul>

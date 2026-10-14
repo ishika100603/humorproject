@@ -402,14 +402,6 @@ export default function CaptionApp() {
   }, [visible, now]);
 
   // Meme of the week: best caption posted since Monday
-  // Most-voted captions of all time (only notes that show in the feed)
-  const topCaptions = useMemo(() => {
-    const shown = new Set(slots.flatMap((slot) => slot.ids));
-    return rows
-      .filter((r) => shown.has(r.id) && Number(r.score) > 0)
-      .sort((a, b) => Number(b.score) - Number(a.score))
-      .slice(0, 5);
-  }, [rows, slots]);
 
   const openNote = (index: number) => {
     playSound("tap");
@@ -427,23 +419,6 @@ export default function CaptionApp() {
             <CrownsPanel mine={mine} loggedIn={!!user} />
             <StarPanel star={star} loggedIn={!!user} daysLeft={now === null ? 7 : daysUntilMonday(now)} />
             <Rankboard peers={peers} />
-            <section>
-              <h2 className="text-xs text-ink/60">Top captions</h2>
-              {topCaptions.length === 0 ? (
-                <p className="mt-1 text-sm">No upvotes yet.</p>
-              ) : (
-                <ol className="mt-2 grid gap-2">
-                  {topCaptions.map((r, i) => (
-                    <li key={r.id} className="flex items-center gap-2.5 text-sm">
-                      <span className="w-4 shrink-0 text-ink/60">{i + 1}</span>
-                      <img src={r.image_url} alt="" className="h-9 w-9 shrink-0 rounded object-cover" />
-                      <span className="line-clamp-2 flex-1 leading-snug">{r.caption}</span>
-                      <span className="shrink-0 text-teal">+{Number(r.score)}</span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </section>
             <details className="text-sm">
               <summary className="cursor-pointer select-none text-xs text-ink/60">Updates</summary>
               <ul className="mt-2 grid gap-1 text-xs">
