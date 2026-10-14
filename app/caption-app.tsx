@@ -512,6 +512,7 @@ export default function CaptionApp() {
             </div>
           )}
 
+          <div className="min-h-[calc(100dvh-170px)]">
           {weeks.map((w, wi) => (
             <div key={w.key} className={wi > 0 ? "mt-10" : ""}>
               <div className="mb-5 flex items-center gap-3 text-xs text-ink/60">
@@ -534,6 +535,8 @@ export default function CaptionApp() {
               </div>
             </div>
           ))}
+
+          </div>
 
           {!loading && (
             <CaughtUp
@@ -925,8 +928,19 @@ function CaughtUp({
   loggedIn: boolean;
   onToggleSeen: () => void;
 }) {
+  // Only appears once you scroll down to it
+  const ref = useRef<HTMLDivElement>(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => e.isIntersecting && setSeen(true), { threshold: 0.4 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   return (
-    <div className="mt-12 flex justify-center">
+    <div ref={ref} className={`mt-12 flex justify-center transition-all duration-700 ${seen ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"}`}>
       <div className="note w-[min(420px,100%)] rotate-1 p-6 text-center" style={{ background: NOTE_COLORS[2] }}>
         <p className="hand text-xl tracking-[0.1em]">
           {showSeen ? "That's every note" : hasNew ? "You're all caught up" : "Nothing new since your last visit"}
@@ -954,31 +968,35 @@ const WAIT_JOKES = [
 ];
 
 function WaitJokes() {
-  const [open, setOpen] = useState<number | null>(null);
+  const [open, setOpen] = useState(false);
   return (
-    <div className="mt-3 border-t border-ink/10 pt-2">
-      <p className="text-[11px] uppercase tracking-[0.15em] text-ink/50">While you wait</p>
-      <ul className="mt-1.5 grid gap-1.5">
-        {WAIT_JOKES.map(([setup, punch], i) => (
-          <li
-            key={i}
-            tabIndex={0}
-            onMouseEnter={() => setOpen(i)}
-            onMouseLeave={() => setOpen(null)}
-            onFocus={() => setOpen(i)}
-            onBlur={() => setOpen(null)}
-            onClick={() => setOpen(open === i ? null : i)}
-            className="cursor-default rounded-md bg-white/60 px-2.5 py-1.5 text-xs leading-snug outline-none hover:bg-white focus:bg-white"
-          >
-            {setup}{" "}
-            {open === i ? (
-              <span className="pop inline-block text-teal">{punch}</span>
-            ) : (
-              <span className="text-ink/40">(hover)</span>
-            )}
-          </li>
-        ))}
-      </ul>
+    <div
+      className="relative mt-2 flex justify-center"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        aria-expanded={open}
+        className="rounded-full border border-ink/30 bg-white/70 px-3 py-1 text-xs hover:bg-white"
+      >
+        While you wait: 3 jokes
+      </button>
+      {open && (
+        <ul
+          role="tooltip"
+          className="pop absolute bottom-full z-10 mb-2 grid w-[min(300px,80vw)] divide-y divide-ink/10 rounded-md border border-ink/20 bg-white p-3 text-left text-xs leading-snug shadow-md"
+        >
+          {WAIT_JOKES.map(([setup, punch], i) => (
+            <li key={i} className="py-1.5 first:pt-0 last:pb-0">
+              {setup} <span className="text-teal">{punch}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
