@@ -56,7 +56,6 @@ export default function Menu({
               <li><a href="/feed?post=1" className="hover:underline">Post a photo</a></li>
               <li><a href="/feed?tour=1" className="hover:underline">How it works</a></li>
               <li><a href="/profile" className="hover:underline">My profile</a></li>
-              <li><a href="/privacy" className="hover:underline">Privacy</a></li>
             </ul>
             {children}
           </nav>

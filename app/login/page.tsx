@@ -238,8 +238,6 @@ export default function LoginPage() {
         </div>
         <p className="absolute inset-x-0 bottom-[3vh] text-center text-xs text-ink/60">
           <a href="/feed" className="underline">Just browsing</a>
-          <span className="mx-2" aria-hidden="true">·</span>
-          <a href="/privacy" className="underline">Privacy</a>
         </p>
       </section>
     </main>
