@@ -421,3 +421,7 @@ body {
 @keyframes lounge-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
 .lounge-dot { animation: lounge-dot 1.2s ease-in-out infinite; opacity: 0.2; }
 @keyframes lounge-dot { 0%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+
+/* No blinking text cursor when clicking on plain text. Typing fields keep theirs. */
+body { caret-color: transparent; }
+input, textarea, [contenteditable="true"] { caret-color: auto; }

@@ -429,8 +429,8 @@ export default function CaptionApp() {
               </section>
             )}
             <details className="text-sm">
-              <summary className="cursor-pointer text-xs text-ink/60">What&apos;s new</summary>
-              <ul className="mt-2 grid gap-1.5">
+              <summary className="cursor-pointer select-none text-xs text-ink/60">Updates</summary>
+              <ul className="mt-2 grid gap-1 text-xs">
                 {UPDATES.map((u, i) => (
                   <li key={i} className="flex gap-3">
                     <span className="w-12 shrink-0 text-ink/60">{u.date}</span>
@@ -449,6 +449,8 @@ export default function CaptionApp() {
         </div>
         <div className="flex items-center gap-2">
           {user ? (
+            <>
+            <span className="hidden text-xs text-ink/60 sm:inline">Vote to earn crowns</span>
             <button
               onClick={() => setMenuOpen(true)}
               className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm hover:bg-white"
@@ -457,6 +459,7 @@ export default function CaptionApp() {
               <Crown />
               <span key={mine?.points} className="pop inline-block">{mine?.points ?? 0}</span>
             </button>
+            </>
           ) : (
             <span className="hidden items-center gap-1.5 text-xs text-ink/70 sm:flex">
               <Crown className="h-3.5 w-3.5" /> Log in to earn crowns
