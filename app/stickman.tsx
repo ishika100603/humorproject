@@ -5,13 +5,14 @@ export default function StickMan({ label }: { label?: string }) {
       <svg viewBox="0 0 120 72" className="h-24 w-40" aria-hidden="true" filter="url(#sketch)">
         <g stroke="#141414" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none">
           {/* body, from shoulder to hip */}
-          <path d="M72 54 L30 60" />
+          <path d="M70 55 L30 60" />
           {/* thigh up to the knee, then two kicking shins */}
           <path d="M30 60 L42 32" />
           <path className="lounge-shin-a" d="M42 32 L22 28" />
           <path className="lounge-shin-b" d="M42 32 L20 37" />
-          {/* arm propping up the head */}
-          <path d="M72 54 L88 62 L97 46" />
+          {/* arm: elbow on the floor, forearm up to the face */}
+          <path d="M70 55 Q80 61 89 64" />
+          <path d="M89 64 Q94 57 97 50" />
           {/* head */}
           <g className="lounge-head">
             <circle cx="86" cy="34" r="14" fill="#fff" />
@@ -19,6 +20,12 @@ export default function StickMan({ label }: { label?: string }) {
             <circle className="lounge-eye" cx="91" cy="31" r="1.4" fill="#141414" stroke="none" />
             <path d="M80 38 Q86 44 92 38" strokeWidth="2.4" />
           </g>
+          {/* hand cupping the cheek */}
+          <path
+            d="M97 51 C103 50 105 42 101 38 C99 36 96 39 97 42 C94 43 92 46 93 48 Z"
+            fill="#fff"
+            strokeWidth="2.4"
+          />
         </g>
         {/* thinking dots */}
         <g fill="#141414">
