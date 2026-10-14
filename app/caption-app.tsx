@@ -946,6 +946,43 @@ function CaughtUp({
   );
 }
 
+// Three short jokes to read while the caption is written. Hover or tap for the punchline.
+const WAIT_JOKES = [
+  ["I asked AI to make me funnier.", "It said it's a language model, not a miracle worker."],
+  ["My screen time report says 9 hours a day.", "Finally, a full-time job I actually show up to."],
+  ["Procrastinators of the world, unite!", "…tomorrow."],
+];
+
+function WaitJokes() {
+  const [open, setOpen] = useState<number | null>(null);
+  return (
+    <div className="mt-3 border-t border-ink/10 pt-2">
+      <p className="text-[11px] uppercase tracking-[0.15em] text-ink/50">While you wait</p>
+      <ul className="mt-1.5 grid gap-1.5">
+        {WAIT_JOKES.map(([setup, punch], i) => (
+          <li
+            key={i}
+            tabIndex={0}
+            onMouseEnter={() => setOpen(i)}
+            onMouseLeave={() => setOpen(null)}
+            onFocus={() => setOpen(i)}
+            onBlur={() => setOpen(null)}
+            onClick={() => setOpen(open === i ? null : i)}
+            className="cursor-default rounded-md bg-white/60 px-2.5 py-1.5 text-xs leading-snug outline-none hover:bg-white focus:bg-white"
+          >
+            {setup}{" "}
+            {open === i ? (
+              <span className="pop inline-block text-teal">{punch}</span>
+            ) : (
+              <span className="text-ink/40">(hover)</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function CreateCaptions({
   userId,
   onCreated,
@@ -1135,7 +1172,7 @@ function CreateCaptions({
         }}
       >
         {preview ? (
-          <img src={preview} alt="" className="h-16 w-16 rounded object-cover" />
+          <img src={preview} alt="" className={`${working ? "h-10 w-10" : "h-16 w-16"} rounded object-cover`} />
         ) : (
           <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded border border-dashed border-ink/40 text-lg">+</span>
         )}
@@ -1160,14 +1197,15 @@ function CreateCaptions({
         />
       </label>
 
-      <input
-        value={angle}
-        onChange={(e) => setAngle(e.target.value)}
-        placeholder="Optional hint, like “midterm week”"
-        maxLength={200}
-        disabled={working}
-        className="mt-3 w-full rounded-md border border-ink/20 bg-white/70 px-3 py-2 text-sm focus:border-teal"
-      />
+      {!working && (
+        <input
+          value={angle}
+          onChange={(e) => setAngle(e.target.value)}
+          placeholder="Optional hint, like “midterm week”"
+          maxLength={200}
+          className="mt-3 w-full rounded-md border border-ink/20 bg-white/70 px-3 py-2 text-sm focus:border-teal"
+        />
+      )}
 
       {working ? (
         <div className="mt-4" role="status" aria-live="polite">
@@ -1181,6 +1219,7 @@ function CreateCaptions({
           <div className="mt-2">
             <StickMan />
           </div>
+          <WaitJokes />
           <p className="mt-2 text-center text-xs text-ink/60">Takes about 10 seconds. You can leave this open or go back.</p>
           <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
             <button
