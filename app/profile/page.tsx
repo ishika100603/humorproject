@@ -76,7 +76,7 @@ export default function ProfilePage() {
       toast("error", "Didn't save", `${error.message}. Try again, or email ia2630@columbia.edu.`);
     } else {
       setProfile({ ...profile, ...updates });
-      setStatus("Name saved.");
+      setStatus("");
       toast("success", "Approved!", "Your name is saved.");
     }
   };
@@ -244,7 +244,9 @@ export default function ProfilePage() {
                 />
               </label>
             </div>
-            <button className="h-10 rounded-md bg-ink px-4 text-sm text-white hover:bg-teal">Save name</button>
+            {(firstName.trim() !== (profile.first_name ?? "") || lastName.trim() !== (profile.last_name ?? "")) && (
+              <button className="pop h-10 rounded-md bg-ink px-4 text-sm text-white hover:bg-teal">Save name</button>
+            )}
             {status && (
               <p className="text-xs text-ink/60" role="status">
                 {status}
