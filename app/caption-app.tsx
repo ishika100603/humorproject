@@ -563,6 +563,7 @@ export default function CaptionApp() {
               onCreated={onCreated}
               onBack={() => setPostOpen(false)}
               onStatus={onJob}
+              active={postOpen}
             />
           </div>
         </div>
@@ -935,11 +936,13 @@ function CreateCaptions({
   onCreated,
   onBack,
   onStatus,
+  active,
 }: {
   userId: string;
   onCreated: (ids: number[]) => void;
   onBack: () => void;
   onStatus: (phase: string, pct: number) => void;
+  active: boolean;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -959,6 +962,31 @@ function CreateCaptions({
     if (preview) URL.revokeObjectURL(preview);
     setPreview(f ? URL.createObjectURL(f) : null);
   };
+
+  // Drag a photo onto the box, or paste one with Ctrl+V / Cmd+V
+  const [dragging, setDragging] = useState(false);
+  const takeImage = (files: FileList | null | undefined) => {
+    const img = Array.from(files ?? []).find((f) => f.type.startsWith("image/"));
+    if (img) {
+      pickFile(img);
+      playSound("tap");
+    } else if (files && files.length) {
+      setMessage("That isn't a photo. Try a JPG, PNG or WebP.");
+    }
+  };
+  useEffect(() => {
+    if (!active || phase === "working") return;
+    const onPaste = (e: ClipboardEvent) => {
+      const files = e.clipboardData?.files;
+      if (files && files.length) {
+        e.preventDefault();
+        takeImage(files);
+      }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, phase]);
 
   // Progress creeps toward a target so the percentage keeps moving
   const animateTo = (target: number, speed: number) => {
@@ -1076,9 +1104,20 @@ function CreateCaptions({
       </div>
 
       <label
-        className={`flex items-center gap-3 text-sm ${
-          working ? "opacity-50" : "cursor-pointer hover:border-teal"
-        }`}
+        className={`flex items-center gap-3 rounded-md border border-dashed p-2 text-sm transition-colors ${
+          dragging ? "border-teal bg-white" : "border-transparent"
+        } ${working ? "opacity-50" : "cursor-pointer hover:border-ink/30"}`}
+        onDragOver={(e) => {
+          if (working) return;
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          if (!working) takeImage(e.dataTransfer.files);
+        }}
       >
         {preview ? (
           <img src={preview} alt="" className="h-16 w-16 rounded object-cover" />
@@ -1086,7 +1125,16 @@ function CreateCaptions({
           <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded border border-dashed border-ink/40 text-lg">+</span>
         )}
         <span className="min-w-0 break-words">
-          {file ? file.name : "Choose any photo (up to 5 MB)"}
+          {file ? (
+            file.name
+          ) : dragging ? (
+            "Drop it here"
+          ) : (
+            <>
+              Choose, drag in, or paste a photo
+              <span className="block text-xs text-ink/50">Up to 5 MB. Ctrl+V or ⌘V to paste.</span>
+            </>
+          )}
         </span>
         <input
           type="file"
