@@ -3,26 +3,9 @@
 import { useEffect, useState } from "react";
 
 const STEPS = [
-  {
-    title: "Welcome to 116 & Broadway",
-    body: "People post photos, AI writes a caption, and you vote on whether it's funny.",
-  },
-  {
-    title: "Vote",
-    body: "Open a note and hit thumbs up or thumbs down. Use the arrow keys to go to the next one.",
-  },
-  {
-    title: "Crowns",
-    body: "You get 1 crown per vote. Whoever votes the most in a week is Star of the week.",
-  },
-  {
-    title: "Post a photo",
-    body: "Upload any photo and AI writes the caption. Your name isn't shown.",
-  },
-  {
-    title: "Next time",
-    body: "You'll only see notes you haven't seen yet. Older ones are at the bottom.",
-  },
+  { title: "Vote", body: "Tap a note. 👍 if it's funny, 👎 if not." },
+  { title: "Earn crowns", body: "Every vote is 1 crown. Top voter each week is Star of the week." },
+  { title: "Post", body: "Upload any photo. AI writes the caption." },
 ];
 
 export default function Tutorial({ onClose }: { onClose: () => void }) {

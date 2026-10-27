@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const LINKS: [string, string, string?][] = [
-  ["/", "Home"],
-  ["/feed", "Vote on captions"],
-  ["/feed?post=1", "Post a photo", "post"],
+  ["/", "Memes"],
+  ["/?post=1", "Post a photo", "post"],
   ["/top", "Top captions"],
-  ["/feed?tour=1", "How it works", "tour"],
+  ["/?tour=1", "How it works", "tour"],
   ["/profile", "My profile"],
+  ["/welcome", "About"],
 ];
 
 // Three-line menu button that opens a slim panel from the left
@@ -69,7 +69,7 @@ export default function Menu({
                     onClick={(e) => {
                       setOpen(false);
                       // Already on the feed: open the popup without reloading
-                      if (action && window.location.pathname === "/feed") {
+                      if (action && window.location.pathname === "/") {
                         e.preventDefault();
                         window.dispatchEvent(new CustomEvent("feed-action", { detail: action }));
                       }

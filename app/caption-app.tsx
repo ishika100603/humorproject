@@ -143,6 +143,7 @@ export default function CaptionApp() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [now, setNow] = useState<number | null>(null);
   const [postOpen, setPostOpen] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
   // Caption job status, so it can keep running after the popup is closed
   const [job, setJob] = useState<{ phase: string; pct: number }>({ phase: "idle", pct: 0 });
   const onJob = useCallback(
@@ -350,7 +351,52 @@ export default function CaptionApp() {
     } catch {}
   };
 
+  // ---------- new memes notification ----------
+  const [freshCount, setFreshCount] = useState(0);
+  const knownIds = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    rows.forEach((r) => knownIds.current.add(r.id));
+  }, [rows]);
+
+  // Every 30 seconds, look for captions posted since the feed loaded
+  useEffect(() => {
+    const check = async () => {
+      if (document.hidden || knownIds.current.size === 0) return;
+      const { data } = await createClient()
+        .from("captions")
+        .select("id")
+        .order("created_at", { ascending: false })
+        .limit(30);
+      const fresh = (data ?? []).filter((r: { id: number }) => !knownIds.current.has(r.id));
+      if (fresh.length) setFreshCount(fresh.length);
+    };
+    const t = setInterval(check, 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Coming back after a while: say how many were posted since the last visit
+  const greeted = useRef(false);
+  useEffect(() => {
+    if (greeted.current || loading || seenAtLoad.size === 0) return;
+    greeted.current = true;
+    const unseen = buildSlots(rows).filter((s) => s.ids.length === 1 && s.ids.some((id) => !seenAtLoad.has(id))).length;
+    if (unseen > 0) setFreshCount(unseen);
+  }, [loading, rows, seenAtLoad]);
+
+  const showFresh = async () => {
+    setFreshCount(0);
+    const data = await fetchFeed();
+    if (data) {
+      const added = data.filter((r) => !knownIds.current.has(r.id)).map((r) => r.id);
+      setRows(data);
+      if (added.length) setArrivedIds((prev) => new Set([...prev, ...added]));
+    }
+    setShowSeen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const onCreated = async (ids: number[]) => {
+    ids.forEach((id) => knownIds.current.add(id));
     const data = await fetchFeed();
     if (!data) return;
     setRows(data);
@@ -408,7 +454,32 @@ export default function CaptionApp() {
 
   // ---------- what to show ----------
   // Older photos got 3 captions each. The feed now shows only one-caption notes.
-  const slots = useMemo(() => buildSlots(rows).filter((slot) => slot.ids.length === 1), [rows]);
+  const unsorted = useMemo(() => buildSlots(rows).filter((slot) => slot.ids.length === 1), [rows]);
+
+  // Notes are ordered by likes, but the order is a snapshot: it is taken when the
+  // feed loads and again when you close a note, never while you are voting.
+  const [likeOrder, setLikeOrder] = useState<Map<string, number> | null>(null);
+  const scoreOf = useCallback(
+    (slot: Slot) => slot.ids.reduce((sum, id) => sum + Number(rowById.get(id)?.score ?? 0), 0),
+    [rowById]
+  );
+  const resort = useCallback(
+    () => setLikeOrder(new Map(unsorted.map((slot) => [slot.url, scoreOf(slot)]))),
+    [unsorted, scoreOf]
+  );
+  useEffect(() => {
+    if (likeOrder === null && !loading && unsorted.length) resort();
+  }, [likeOrder, loading, unsorted.length, resort]);
+  const slots = useMemo(() => {
+    const rank = (slot: Slot) => likeOrder?.get(slot.url) ?? Number.MAX_SAFE_INTEGER; // brand-new notes go first
+    return [...unsorted].sort(
+      (a, b) =>
+        weekStart(b.newest).getTime() - weekStart(a.newest).getTime() ||
+        rank(b) - rank(a) ||
+        b.newest.localeCompare(a.newest)
+    );
+  }, [unsorted, likeOrder]);
+
   const isNew = (slot: Slot) => slot.ids.some((id) => !seenAtLoad.has(id) || arrivedIds.has(id));
   const newSlots = slots.filter(isNew);
   const seenSlots = slots.filter((s) => !isNew(s));
@@ -438,16 +509,31 @@ export default function CaptionApp() {
   return (
     <>
       {tutorial && <Tutorial onClose={closeTutorial} />}
+      {boardOpen && (
+        <SidePanel onClose={() => setBoardOpen(false)} title="Leaderboard">
+          <StarPanel star={star} loggedIn={!!user} daysLeft={now === null ? 7 : daysUntilMonday(now)} />
+          <Rankboard peers={peers} />
+          <Link href="/top" className="flex items-center justify-between rounded-md border border-ink/20 px-3 py-2 text-sm hover:bg-white">
+            Top captions <span aria-hidden>→</span>
+          </Link>
+        </SidePanel>
+      )}
+      {freshCount > 0 && (
+        <NewMemesNotice
+          count={freshCount}
+          onShow={showFresh}
+          onDismiss={() => setFreshCount(0)}
+        />
+      )}
 
       <header className="mx-auto flex w-full max-w-[1680px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-10">
         <div className="flex items-center gap-3">
           <Menu open={menuOpen} onOpenChange={setMenuOpen}>
-            <CrownsPanel mine={mine} loggedIn={!!user} />
-            <StarPanel star={star} loggedIn={!!user} daysLeft={now === null ? 7 : daysUntilMonday(now)} />
-            <Rankboard peers={peers} />
-            <details className="text-sm">
-              <summary className="cursor-pointer select-none text-xs text-ink/60">Updates</summary>
-              <ul className="mt-2 grid gap-1 text-xs">
+            <Fold title={<><Crown className="h-3.5 w-3.5" /> Your crowns{user ? `: ${mine?.points ?? 0}` : ""}</>}>
+              <CrownsPanel mine={mine} loggedIn={!!user} />
+            </Fold>
+            <Fold title="Updates">
+              <ul className="grid gap-1 text-xs">
                 {UPDATES.map((u, i) => (
                   <li key={i} className="flex gap-3">
                     <span className="w-12 shrink-0 text-ink/60">{u.date}</span>
@@ -455,23 +541,27 @@ export default function CaptionApp() {
                   </li>
                 ))}
               </ul>
-            </details>
-            <button onClick={toggleSound} aria-pressed={soundOn} className="self-start text-sm underline">
-              {soundOn ? "Turn sound off" : "Turn sound on"}
-            </button>
+            </Fold>
           </Menu>
           <Link href="/" className="hand text-base tracking-[0.15em]">
             At 116 &amp; Broadway
           </Link>
         </div>
         <div className="flex items-center gap-2">
+          <IconButton label="Leaderboard" onClick={() => setBoardOpen(true)}>
+            <path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3" />
+          </IconButton>
+          <IconButton label={soundOn ? "Turn sound effects off" : "Turn sound effects on"} pressed={soundOn} onClick={toggleSound}>
+            <path d="M4 9v6h4l5 4V5L8 9H4z" />
+            {soundOn ? <path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" /> : <path d="M17 9l5 6M22 9l-5 6" />}
+          </IconButton>
           {user ? (
             <>
             <span className="hidden text-xs text-ink/60 sm:inline">Vote to earn crowns</span>
             <button
               onClick={() => setMenuOpen(true)}
               className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm hover:bg-white"
-              title="Your crowns and the rankboard"
+              title="Your crowns"
             >
               <Crown />
               <span key={mine?.points} className="pop inline-block">{mine?.points ?? 0}</span>
@@ -618,7 +708,10 @@ export default function CaptionApp() {
             setOpenIndex(i);
             visible[i]?.ids.forEach((id) => pendingSeen.current.add(id));
           }}
-          onClose={() => setOpenIndex(null)}
+          onClose={() => {
+            setOpenIndex(null);
+            resort(); // done voting: now re-order by likes
+          }}
         />
       )}
     </>
@@ -827,17 +920,121 @@ function VoteControl({
   );
 }
 
+// Small round icon button for the header
+function IconButton({
+  label,
+  pressed,
+  onClick,
+  children,
+}: {
+  label: string;
+  pressed?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={pressed}
+      title={label}
+      className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white"
+    >
+      <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="#141414" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {children}
+      </svg>
+    </button>
+  );
+}
+
+// "i" that shows an explanation on hover or keyboard focus
+function InfoTip({ text }: { text: string }) {
+  return (
+    <span className="group relative inline-flex">
+      <button
+        type="button"
+        aria-label="What is this?"
+        className="flex h-4 w-4 items-center justify-center rounded-full border border-ink/50 font-serif text-[10px] italic leading-none text-ink/70 hover:bg-ink hover:text-white"
+      >
+        i
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-56 -translate-x-1/2 rounded-md border border-ink/15 bg-white px-3 py-2 text-xs normal-case leading-snug tracking-normal text-ink opacity-0 shadow-sm transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+      >
+        {text}
+      </span>
+    </span>
+  );
+}
+
+// Menu section that opens from its title with a pull-down arrow
+function Fold({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <details className="group border-t border-ink/10 pt-3">
+      <summary className="flex cursor-pointer list-none items-center justify-between text-sm [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-1.5">{title}</span>
+        <svg viewBox="0 0 24 24" className="h-4 w-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </summary>
+      <div className="mt-3">{children}</div>
+    </details>
+  );
+}
+
+// Panel that slides in from the right, with Back in the top-left
+function SidePanel({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="lightbox absolute inset-0 bg-[#141414]/20" onClick={onClose} />
+      <aside className="panel-in absolute inset-y-0 right-0 flex w-[min(340px,88vw)] flex-col gap-7 overflow-y-auto bg-[#eef6fb] px-7 py-6">
+        <div className="flex items-center gap-3">
+          <button onClick={onClose} className="text-sm underline">
+            ← Back
+          </button>
+          <span className="hand ml-auto text-sm tracking-[0.15em]">{title}</span>
+        </div>
+        {children}
+      </aside>
+    </div>
+  );
+}
+
+// Notification in the top right when new memes are posted
+function NewMemesNotice({ count, onShow, onDismiss }: { count: number; onShow: () => void; onDismiss: () => void }) {
+  return (
+    <div role="status" className="panel-in fixed right-5 top-20 z-40 flex w-[min(300px,calc(100vw-40px))] items-start gap-3 rounded-lg border border-ink/15 bg-white p-4 shadow-md">
+      <span className="mt-0.5 h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-teal" />
+      <div className="flex-1">
+        <p className="text-sm font-medium">
+          {count} new {count === 1 ? "meme" : "memes"}
+        </p>
+        <p className="text-xs text-ink/60">Fresh captions just got posted.</p>
+        <button onClick={onShow} className="mt-2 rounded-full bg-ink px-3 py-1 text-xs text-white hover:bg-teal">
+          Show me
+        </button>
+      </div>
+      <button onClick={onDismiss} aria-label="Dismiss" className="text-ink/40 hover:text-ink">
+        ×
+      </button>
+    </div>
+  );
+}
+
 function CrownsPanel({ mine, loggedIn }: { mine: MyPoints | null; loggedIn: boolean }) {
   const days = mine?.days_this_month ?? 0;
   const pct = Math.min(100, (days / BONUS_DAYS) * 100);
   return (
     <section>
-      <h2 className="flex items-center gap-1.5 text-xs text-ink/60">
-        <Crown className="h-3.5 w-3.5" /> Your crowns
-      </h2>
       {loggedIn ? (
         <>
-          <p className="mt-1 text-2xl">{mine?.points ?? 0}</p>
+          <p className="text-2xl">{mine?.points ?? 0}</p>
           <p className="mt-1 text-xs text-ink/70">1 per vote. Vote on {BONUS_DAYS} days this month for +10.</p>
           <div className="mt-2 flex items-center gap-2 text-xs text-ink/60">
             <div className="h-1 flex-1 overflow-hidden rounded-full bg-white">
@@ -860,7 +1057,10 @@ function StarPanel({ star, loggedIn, daysLeft }: { star: Star | null; loggedIn: 
   const mineVotes = Number(star?.my_votes ?? 0);
   return (
     <section>
-      <h2 className="text-xs text-ink/60">★ Star of the week</h2>
+      <h2 className="flex items-center gap-1.5 text-xs text-ink/60">
+        ★ Star of the week
+        <InfoTip text="Whoever votes the most from Monday to Sunday wins. They get a gold star by their name for a week and 5 bonus crowns." />
+      </h2>
       {star?.star_names ? (
         <p className="mt-1 text-sm">
           <span className="text-base">{star.star_names}</span>
@@ -869,9 +1069,6 @@ function StarPanel({ star, loggedIn, daysLeft }: { star: Star | null; loggedIn: 
       ) : (
         <p className="mt-1 text-sm">No one yet.</p>
       )}
-      <p className="mt-1 text-xs text-ink/70">
-        Most votes Mon to Sun wins a star next to their name and 5 crowns.
-      </p>
       <p className="mt-2 text-xs text-ink/70">
         {leader ? `This week: ${leader}, ${Number(star?.leader_votes)} votes.` : "No votes yet this week."}
         {loggedIn ? ` You have ${mineVotes}.` : ""} {daysLeft} {daysLeft === 1 ? "day" : "days"} left.

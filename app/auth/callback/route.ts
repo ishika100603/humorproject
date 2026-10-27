@@ -12,7 +12,7 @@ export async function GET(request: Request) {
       // Came from a "Forgot password" email: open the set-a-new-password box
       const sent = data.user?.recovery_sent_at ? new Date(data.user.recovery_sent_at).getTime() : 0;
       const fromReset = Date.now() - sent < 60 * 60 * 1000;
-      return NextResponse.redirect(`${origin}/profile${fromReset ? "?reset=1" : ""}`);
+      return NextResponse.redirect(fromReset ? `${origin}/profile?reset=1` : `${origin}/`);
     }
   }
 

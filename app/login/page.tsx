@@ -46,6 +46,15 @@ export default function LoginPage() {
   const [logState, setLogState] = useState<"hover" | "dropping">("hover");
   const [i, setI] = useState(0);
 
+  // Already signed in? Skip this page and go straight to the memes.
+  useEffect(() => {
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        if (data.user) router.replace("/");
+      });
+  }, [router]);
+
   useEffect(() => {
     const t = setInterval(() => setI((n) => n + 1), 6000);
     return () => clearInterval(t);
@@ -104,7 +113,7 @@ export default function LoginPage() {
       setLogState("dropping");
       toast("success", "Approved!", "You're logged in.");
       setTimeout(() => {
-        router.push("/feed");
+        router.push("/");
         router.refresh();
       }, 800);
       return;
@@ -124,7 +133,7 @@ export default function LoginPage() {
       setLogState("dropping");
       toast("success", "Approved!", "Account created. Add your name next.");
       // New accounts go to the profile page to add a name
-      router.push("/profile");
+      router.push("/");
       router.refresh();
     } else {
       setNotice(`Almost done. We sent a confirmation link to ${email}. Open it, then log in here.`);
@@ -241,7 +250,7 @@ export default function LoginPage() {
 
         </div>
         <p className="absolute inset-x-0 bottom-[3vh] text-center text-xs text-ink/60">
-          <Link href="/feed" className="underline">Just browsing</Link>
+          <Link href="/" className="underline">Just browsing</Link>
         </p>
       </section>
     </main>
