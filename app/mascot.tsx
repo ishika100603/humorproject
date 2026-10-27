@@ -8,15 +8,22 @@ const NOTE_COLORS = ["#f6eebc", "#f3e9b0", "#f8f1c8", "#efe4a6"];
 // The sticky-note person throws the notes into the air, then shrinks
 // into the bottom corner and keeps watching the cursor.
 export default function Mascot({ onThrow, onHelp }: { onThrow: () => void; onHelp: () => void }) {
-  const [stage, setStage] = useState<"center" | "throw" | "corner">("center");
+  const [stage, setStage] = useState<"hidden" | "center" | "throw" | "corner">("hidden");
 
   useEffect(() => {
+    // The big toss plays once per visit. After that he just waits in the corner.
+    let played = false;
+    try {
+      played = sessionStorage.getItem("mascot-intro-done") === "1";
+      sessionStorage.setItem("mascot-intro-done", "1");
+    } catch {}
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
+    if (reduce || played) {
       setStage("corner");
       onThrow();
       return;
     }
+    setStage("center");
     const a = setTimeout(() => setStage("throw"), 250);
     const b = setTimeout(onThrow, 650);
     const c = setTimeout(() => setStage("corner"), 1250);
@@ -25,6 +32,7 @@ export default function Mascot({ onThrow, onHelp }: { onThrow: () => void; onHel
   }, []);
 
   const corner = stage === "corner";
+  if (stage === "hidden") return null;
 
   return (
     <>
