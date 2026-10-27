@@ -61,6 +61,21 @@ export default function Mascot({ onThrow, onHelp }: { onThrow: () => void; onHel
         </div>
       )}
 
+      {corner && (
+        // Small "i" so people know he opens the guide
+        <button
+          onClick={onHelp}
+          aria-label="How it works"
+          className="group fixed z-50 flex h-6 w-6 items-center justify-center rounded-full border border-[#141414] bg-white text-xs text-[#141414] shadow-sm hover:bg-[#141414] hover:text-white"
+          style={{ left: "calc(100% - 120px)", top: "calc(100% - 108px)" }}
+        >
+          <span className="font-serif italic">i</span>
+          <span className="pointer-events-none absolute bottom-full right-0 mb-2 whitespace-nowrap rounded-md border border-[#141414]/15 bg-white px-2.5 py-1 text-xs text-[#141414] opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+            How it works
+          </span>
+        </button>
+      )}
+
       <button
         onClick={corner ? onHelp : undefined}
         aria-label="How it works"
