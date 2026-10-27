@@ -258,9 +258,9 @@ export default function CaptionApp() {
       setSoundOn(localStorage.getItem("ctc-sound") !== "off");
       const params = new URLSearchParams(window.location.search);
       if (params.has("post")) setPostOpen(true);
-      // Just logged in (or first visit): show the tutorial
+      // The tutorial pops up only right after logging in (?welcome=1), never on a plain visit
       const welcome = params.has("welcome") || params.has("tour");
-      if (welcome || !localStorage.getItem("ctc-tutorial-done")) setTutorial(true);
+      if (welcome) setTutorial(true);
       if (welcome || params.has("post")) window.history.replaceState(null, "", window.location.pathname);
     } catch {}
   }, [fetchFeed, loadLeaders, loadPoints]);
