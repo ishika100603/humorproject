@@ -6,8 +6,6 @@ import { useEffect, useState } from "react";
 const LINKS: [string, string, string?][] = [
   ["/memes", "Memes"],
   ["/memes?post=1", "Post a photo", "post"],
-  ["/top", "Top captions"],
-  ["/profile", "My profile"],
 ];
 
 // Three-line menu button that opens a slim panel from the left
