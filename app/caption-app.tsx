@@ -665,7 +665,8 @@ export default function CaptionApp() {
         </section>
       </main>
 
-      <Mascot onThrow={() => setTossed(true)} onHelp={() => setTutorial(true)} />
+      {/* Only after the memes load, so he never overlaps the waiting stick figure */}
+      {!loading && <Mascot onThrow={() => setTossed(true)} onHelp={() => setTutorial(true)} />}
 
       {user && (
         <div

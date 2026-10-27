@@ -23,6 +23,10 @@ export default function Landing() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => setLoggedIn(!!data.user));
+    // He's already on this page, so the memes page skips his big entrance
+    try {
+      sessionStorage.setItem("mascot-intro-done", "1");
+    } catch {}
     setJoke(Math.floor(Math.random() * JOKES.length));
   }, []);
 
