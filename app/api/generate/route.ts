@@ -26,10 +26,12 @@ How to be funny:
 - Connect it to student life only when it fits (deadlines, dining halls, the 1 train, Butler, housing, recruiting, midterms). Don't force Columbia into every caption.
 - Skip the obvious first joke anyone would make, puns on the object's name, hashtags, emojis, and "POV".
 - 12 words or fewer. Never use em dashes.
-- Playful, never cruel: no jokes about looks, bodies, or identity, no real named people, nothing sexual.
+- Playful, never cruel: no jokes about looks, bodies, or identity, no real named people, nothing sexual.`;
 
-Write 3 different caption ideas, then pick the funniest.
-Return only JSON like {"ideas": ["...", "...", "..."], "best": "..."}.`;
+// The poster picks 1, 2 or 3 captions. The AI drafts a few more, then keeps the funniest.
+const askFor = (count: number) =>
+  `\n\nWrite ${count + 2} different caption ideas, then pick the ${count === 1 ? "single funniest" : `${count} funniest, each a different joke`}.
+Return only JSON like {"ideas": ["...", "..."], "best": [${Array.from({ length: count }, () => '"..."').join(", ")}]}.`;
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -51,6 +53,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const path: string = body.path ?? "";
   const angle: string = String(body.angle ?? "").trim().slice(0, 200);
+  const count = Math.min(3, Math.max(1, Math.round(Number(body.count) || 1)));
 
   // Users can only generate captions for photos in their own folder
   if (!path.startsWith(`${user.id}/`)) {
@@ -69,9 +72,7 @@ export async function POST(request: Request) {
   const imageBase64 = Buffer.from(await file.arrayBuffer()).toString("base64");
   const mimeType = file.type || "image/jpeg";
 
-  const prompt = angle
-    ? `${BASE_PROMPT}\nExtra direction from the user: ${angle}`
-    : BASE_PROMPT;
+  const prompt = (angle ? `${BASE_PROMPT}\nExtra direction from the user: ${angle}` : BASE_PROMPT) + askFor(count);
 
   const requestBody = JSON.stringify({
     contents: [
@@ -156,16 +157,18 @@ export async function POST(request: Request) {
   let captions: string[] = [];
   try {
     const parsed = JSON.parse(text);
+    const best = Array.isArray(parsed?.best) ? parsed.best : [parsed?.best];
     const picked: unknown[] = Array.isArray(parsed)
       ? parsed
-      : [parsed?.best, ...(Array.isArray(parsed?.ideas) ? parsed.ideas : [])];
+      : [...best, ...(Array.isArray(parsed?.ideas) ? parsed.ideas : [])];
     captions = picked
       .filter((c) => typeof c === "string")
       .map((c) => String(c).trim().replace(/^["“]|["”]$/g, ""))
       // No em or en dashes in captions
       .map((c) => c.replace(/\s*[\u2014\u2013]\s*/g, ", "))
       .filter(Boolean)
-      .slice(0, 1);
+      .filter((c, i, all) => all.findIndex((x) => x.toLowerCase() === c.toLowerCase()) === i)
+      .slice(0, count);
   } catch {
     captions = [];
   }

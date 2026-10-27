@@ -1,5 +1,6 @@
 "use client";
 
+import EscBack from "../esc-back";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -183,6 +184,7 @@ export default function ProfilePage() {
         <Link href="/memes" className="absolute left-6 top-6 text-sm underline lg:left-10">
           ← Back
         </Link>
+        <EscBack href="/memes" />
         <label className="group relative cursor-pointer" title="Change photo">
           {profile.avatar_url ? (
             <img

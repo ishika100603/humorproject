@@ -1,3 +1,4 @@
+import EscBack from "../esc-back";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -43,6 +44,7 @@ export default function PrivacyPage() {
         <Link href="/memes" className="absolute left-6 top-6 text-sm underline lg:left-10">
           ← Back
         </Link>
+        <EscBack href="/memes" />
         <h1 className="hand text-[clamp(26px,3vw,40px)] tracking-[0.15em]">Privacy</h1>
         <p className="mt-2 max-w-sm text-xs text-ink/70 sm:text-sm">
           At 116 &amp; Broadway is a student project for a Columbia course. Here&apos;s what it collects and why.

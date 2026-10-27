@@ -57,6 +57,13 @@ function timeAgo(ms: number) {
   return `${d} ${d === 1 ? "day" : "days"} ago`;
 }
 
+// Before Oct 12 every photo got 3 captions automatically; those old ones stay hidden.
+// Newer photos can have 1 to 3 captions because the poster chose that.
+const MULTI_CAPTION_SINCE = "2026-10-12T00:00:00Z";
+export function showInFeed(slot: { ids: number[]; newest: string }) {
+  return slot.ids.length === 1 || slot.newest >= MULTI_CAPTION_SINCE;
+}
+
 function buildSlots(rows: FeedRow[]): Slot[] {
   const groups = new Map<string, FeedRow[]>();
   for (const r of rows) groups.set(r.image_url, [...(groups.get(r.image_url) ?? []), r]);
@@ -258,6 +265,14 @@ export default function CaptionApp() {
     } catch {}
   }, [fetchFeed, loadLeaders, loadPoints]);
 
+  // Esc works as Back for the Post a photo popup
+  useEffect(() => {
+    if (!postOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPostOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [postOpen]);
+
   // Menu links on the feed itself open these without a page reload
   useEffect(() => {
     const onAction = (e: Event) => {
@@ -381,7 +396,7 @@ export default function CaptionApp() {
   useEffect(() => {
     if (greeted.current || loading || seenAtLoad.size === 0) return;
     greeted.current = true;
-    const unseen = buildSlots(rows).filter((s) => s.ids.length === 1 && s.ids.some((id) => !seenAtLoad.has(id))).length;
+    const unseen = buildSlots(rows).filter((s) => showInFeed(s) && s.ids.some((id) => !seenAtLoad.has(id))).length;
     if (unseen > 0) setFreshCount(unseen);
   }, [loading, rows, seenAtLoad]);
 
@@ -455,8 +470,7 @@ export default function CaptionApp() {
   };
 
   // ---------- what to show ----------
-  // Older photos got 3 captions each. The feed now shows only one-caption notes.
-  const unsorted = useMemo(() => buildSlots(rows).filter((slot) => slot.ids.length === 1), [rows]);
+  const unsorted = useMemo(() => buildSlots(rows).filter(showInFeed), [rows]);
 
   // Notes are ordered by likes, but the order is a snapshot: it is taken when the
   // feed loads and again when you close a note, never while you are voting.
@@ -555,40 +569,42 @@ export default function CaptionApp() {
             <path d="M4 9v6h4l5 4V5L8 9H4z" />
             {soundOn ? <path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" /> : <path d="M17 9l5 6M22 9l-5 6" />}
           </IconButton>
+          {user && <UpdatesBell />}
           {user ? (
-            <>
-            <span className="hidden text-xs text-ink/60 sm:inline">Vote to earn crowns</span>
             <button
               onClick={() => setMenuOpen(true)}
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm hover:bg-white"
+              className="flex h-9 items-center gap-1.5 rounded-full px-2.5 text-sm hover:bg-white"
               title="Your crowns"
+              aria-label={`Your crowns: ${mine?.points ?? 0}`}
             >
               <Crown />
               <span key={mine?.points} className="pop inline-block">{mine?.points ?? 0}</span>
             </button>
-            </>
+          ) : null}
+          {user ? (
+            <Link href="/profile" aria-label="Profile" title="Profile" className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white">
+              <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="#141414" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
+              </svg>
+            </Link>
           ) : (
-            <span className="hidden items-center gap-1.5 text-xs text-ink/70 sm:flex">
-              <Crown className="h-3.5 w-3.5" /> Log in to earn crowns
-            </span>
+            <Link href="/login" className="rounded-full px-3 py-1.5 text-sm underline hover:bg-white">
+              Log in
+            </Link>
           )}
           <button
             onClick={() => (user ? setPostOpen(true) : router.push("/login"))}
-            className="rounded-full border border-ink px-4 py-1.5 text-sm hover:bg-white"
+            className="ml-1 rounded-full bg-ink px-4 py-1.5 text-sm text-white hover:bg-teal"
           >
             Post a photo
           </button>
-          <Link href={user ? "/profile" : "/login"} className="rounded-full bg-ink px-4 py-1.5 text-sm text-white hover:bg-teal">
-            {user ? "Profile" : "Log in"}
-          </Link>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-[1680px] px-4 pb-16 pt-4 sm:px-6 lg:px-10">
         <section aria-label="Caption feed" className="min-w-0">
-          <p className="mb-6 min-h-[1.5rem] text-sm text-ink/70">
-            Tap a note to vote. Each vote is 1 crown.
-          </p>
+          <div className="mb-4" />
 
           {error && (
             <p className="mb-4 rounded-md border border-brick bg-white p-3 text-sm text-brick" role="alert">
@@ -650,7 +666,6 @@ export default function CaptionApp() {
       </main>
 
       <Mascot onThrow={() => setTossed(true)} onHelp={() => setTutorial(true)} />
-      {user && <UpdatesBell />}
 
       {user && (
         <div
@@ -760,6 +775,7 @@ function NoteCard({
       <p className="mt-2 text-sm leading-snug">{best.caption}</p>
       <p className="mt-auto pt-2 text-xs text-ink/60">
         {total > 0 ? `+${total}` : total} · {new Date(slot.newest).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+        {captions.length > 1 && ` · ${captions.length} captions`}
       </p>
     </button>
   );
@@ -822,7 +838,7 @@ function Lightbox({
 
       <div
         key={slot.url}
-        className="note note-open w-[min(300px,calc(100vw-8rem),calc(100dvh-15rem))] min-w-[200px] p-4"
+        className={`note note-open min-w-[200px] p-4 ${captions.length > 1 ? "w-[min(280px,calc(100vw-8rem),calc(100dvh-24rem))]" : "w-[min(300px,calc(100vw-8rem),calc(100dvh-15rem))]"}`}
         style={{ background: NOTE_COLORS[index % NOTE_COLORS.length] }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -938,7 +954,6 @@ function UpdatesBell() {
       setFresh(i === -1 ? UPDATES.slice(0, 3) : UPDATES.slice(0, i));
     } catch {}
   }, [top]);
-  if (fresh.length === 0) return null;
   const close = () => {
     try {
       localStorage.setItem(KEY, top);
@@ -946,10 +961,31 @@ function UpdatesBell() {
     setFresh([]);
     setOpen(false);
   };
+  return <BellView fresh={fresh} open={open} setOpen={setOpen} close={close} />;
+}
+
+function BellView({
+  fresh,
+  open,
+  setOpen,
+  close,
+}: {
+  fresh: typeof UPDATES;
+  open: boolean;
+  setOpen: (v: boolean) => void;
+  close: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, close]);
+  if (fresh.length === 0) return null;
   return (
-    <div className="fixed bottom-6 right-28 z-40">
+    <div className="relative">
       {open && (
-        <div role="dialog" aria-label="What's new" className="panel-in absolute bottom-12 right-0 w-64 rounded-lg border border-ink/15 bg-white p-4 shadow-md">
+        <div role="dialog" aria-label="What's new" className="panel-in absolute right-0 top-11 z-40 w-64 rounded-lg border border-ink/15 bg-white p-4 shadow-md">
           <p className="text-sm font-medium">New since your last visit</p>
           <ul className="mt-2 grid gap-1.5 text-xs leading-snug">
             {fresh.map((u, i) => (
@@ -967,9 +1003,9 @@ function UpdatesBell() {
       <button
         onClick={() => (open ? close() : setOpen(true))}
         aria-label={`${fresh.length} new ${fresh.length === 1 ? "update" : "updates"}`}
-        className="relative flex h-10 w-10 items-center justify-center rounded-full border border-ink/25 bg-white shadow-sm hover:bg-tile-face"
+        className="relative flex h-9 w-9 items-center justify-center rounded-full hover:bg-white"
       >
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="#141414" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="#141414" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16zM10 20a2 2 0 0 0 4 0" />
         </svg>
         <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brick px-1 text-[10px] text-white">
@@ -1232,14 +1268,13 @@ function WaitJokes() {
   const [open, setOpen] = useState(false);
   return (
     <div
-      className="relative mt-2 flex justify-center"
-      onMouseEnter={() => setOpen(true)}
+      className="relative mt-3 flex justify-center"
+      onMouseMove={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         aria-expanded={open}
         className="rounded-full border border-ink/30 bg-white/70 px-3 py-1 text-xs hover:bg-white"
@@ -1249,7 +1284,7 @@ function WaitJokes() {
       {open && (
         <ul
           role="tooltip"
-          className="pop absolute bottom-full z-10 mb-2 grid w-[min(300px,80vw)] divide-y divide-ink/10 rounded-md border border-ink/20 bg-white p-3 text-left text-xs leading-snug shadow-md"
+          className="pop absolute top-full z-10 mt-2 grid w-[min(300px,80vw)] divide-y divide-ink/10 rounded-md border border-ink/20 bg-white p-3 text-left text-xs leading-snug shadow-md"
         >
           {WAIT_JOKES.map(([setup, punch], i) => (
             <li key={i} className="py-1.5 first:pt-0 last:pb-0">
@@ -1278,6 +1313,7 @@ function CreateCaptions({
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [angle, setAngle] = useState("");
+  const [count, setCount] = useState(1);
   const [phase, setPhase] = useState<"idle" | "working" | "error" | "stopped">("idle");
   const [progress, setProgress] = useState(0);
   const [stage, setStage] = useState("");
@@ -1377,7 +1413,7 @@ function CreateCaptions({
       res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path, angle }),
+        body: JSON.stringify({ path, angle, count }),
         signal: controller.signal,
       });
     } catch {
@@ -1477,6 +1513,25 @@ function CreateCaptions({
       </label>
 
       {!working && (
+        <div className="mt-3 flex items-center justify-between text-sm">
+          <span className="text-ink/70">How many captions?</span>
+          <div role="radiogroup" aria-label="How many captions" className="flex overflow-hidden rounded-full border border-ink/30">
+            {[1, 2, 3].map((n) => (
+              <button
+                key={n}
+                type="button"
+                role="radio"
+                aria-checked={count === n}
+                onClick={() => setCount(n)}
+                className={`w-9 py-1 text-sm ${count === n ? "bg-ink text-white" : "hover:bg-white"}`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {!working && (
         <input
           value={angle}
           onChange={(e) => setAngle(e.target.value)}
@@ -1498,7 +1553,6 @@ function CreateCaptions({
           <div className="mt-2">
             <StickMan />
           </div>
-          <WaitJokes />
           <p className="mt-2 text-center text-xs text-ink/60">Takes about 10 seconds. You can leave this open or go back.</p>
           <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
             <button
@@ -1516,18 +1570,21 @@ function CreateCaptions({
               Stop
             </button>
           </div>
+          <WaitJokes />
         </div>
       ) : (
         <button
           disabled={!file}
           className="mt-3 w-full rounded-md bg-ink px-4 py-2.5 text-sm text-white hover:bg-teal disabled:opacity-30"
         >
-          {phase === "error" ? "Try again" : "Generate caption"}
+          {phase === "error" ? "Try again" : count === 1 ? "Generate caption" : `Generate ${count} captions`}
         </button>
       )}
 
       {!working && !message && (
-        <p className="mt-2 text-sm text-ink/70">One caption, posted without your name.</p>
+        <p className="mt-2 text-sm text-ink/70">
+          {count === 1 ? "One caption" : `${count} captions`}, posted without your name.
+        </p>
       )}
       {message && (
         <p

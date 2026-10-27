@@ -1,5 +1,6 @@
 "use client";
 
+import EscBack from "../esc-back";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -73,7 +74,7 @@ export default function TopBoard() {
       all.forEach((r) => perImage.set(r.image_url, (perImage.get(r.image_url) ?? 0) + 1));
       setRows(
         all
-          .filter((r) => perImage.get(r.image_url) === 1)
+          .filter((r) => perImage.get(r.image_url) === 1 || r.created_at >= "2026-10-12T00:00:00Z")
           .sort((a, b) => Number(b.score) - Number(a.score) || a.created_at.localeCompare(b.created_at))
           .slice(0, 9)
       );
@@ -91,6 +92,7 @@ export default function TopBoard() {
         <Link href="/memes" className="text-sm underline">
           ← Back
         </Link>
+        <EscBack href="/memes" />
         <Link href="/" className="hand text-sm tracking-[0.15em]">
           At 116 &amp; Broadway
         </Link>
