@@ -184,6 +184,16 @@ export default function LoginPage() {
             {mode === "login" ? "Log in" : "Create an account"}
           </h2>
           <p className="mt-1 text-sm text-ink/60">to vote and post photos.</p>
+          {notice && (
+            <p className="mt-3 rounded-md border border-teal/40 bg-white/70 px-3 py-2 text-xs text-teal" role="status">
+              {notice}
+            </p>
+          )}
+          {error && (
+            <p className="mt-3 rounded-md border border-brick/40 bg-white/70 px-3 py-2 text-xs text-brick" role="alert">
+              {error}
+            </p>
+          )}
 
           <button
             onClick={google}
@@ -256,16 +266,6 @@ export default function LoginPage() {
             )}
           </p>
 
-          {notice && (
-            <p className="mt-3 text-xs text-teal" role="status">
-              {notice}
-            </p>
-          )}
-          {error && (
-            <p className="mt-3 text-xs text-brick" role="alert">
-              {error}
-            </p>
-          )}
 
         </div>
         <p className="absolute inset-x-0 bottom-[3vh] text-center text-xs text-ink/60">
