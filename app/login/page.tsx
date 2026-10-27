@@ -11,6 +11,7 @@ import { LogBox } from "../art";
 import { GooglyEyes } from "../note-person";
 
 const CONTACT = "ia2630@columbia.edu";
+const BLOCKED = `This email isn't on the list for this app yet. Ask ${CONTACT} to add it.`;
 
 function GoogleG() {
   return (
@@ -48,6 +49,9 @@ export default function LoginPage() {
   const [i, setI] = useState(0);
 
   // Already signed in? Skip this page and go straight to the memes.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("blocked")) setError(BLOCKED);
+  }, []);
   useEffect(() => {
     createClient()
       .auth.getUser()
@@ -111,6 +115,13 @@ export default function LoginPage() {
         { setError(friendly(error.message)); toast("error", "Foul!", friendly(error.message)); }
         return;
       }
+      const { data: allowed } = await supabase.rpc("email_allowed");
+      if (allowed === false) {
+        await supabase.auth.signOut();
+        setBusy("");
+        setError(BLOCKED);
+        return;
+      }
       setLogState("dropping");
       toast("success", "Approved!", "You're logged in.");
       setTimeout(() => {
@@ -131,6 +142,12 @@ export default function LoginPage() {
       return;
     }
     if (data.session) {
+      const { data: allowed } = await supabase.rpc("email_allowed");
+      if (allowed === false) {
+        await supabase.auth.signOut();
+        setError(BLOCKED);
+        return;
+      }
       setLogState("dropping");
       toast("success", "Approved!", "Account created. Add your name next.");
       // New accounts go to the profile page to add a name
