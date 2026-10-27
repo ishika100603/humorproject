@@ -1,5 +1,6 @@
 // Dated app updates shown in the menu. Newest first.
 export const UPDATES = [
+  { date: "Oct 27", text: "Leaderboard and sound moved to icons up top." },
   { date: "Oct 27", text: "Memes are the home page now, sorted by likes." },
   { date: "Oct 27", text: "A heads-up when new memes are posted." },
   { date: "Oct 13", text: "Star of the week. Vote the most, get a gold star." },

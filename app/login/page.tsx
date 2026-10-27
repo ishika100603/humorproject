@@ -51,7 +51,7 @@ export default function LoginPage() {
     createClient()
       .auth.getUser()
       .then(({ data }) => {
-        if (data.user) router.replace("/");
+        if (data.user) router.replace("/memes");
       });
   }, [router]);
 
@@ -113,7 +113,7 @@ export default function LoginPage() {
       setLogState("dropping");
       toast("success", "Approved!", "You're logged in.");
       setTimeout(() => {
-        router.push("/");
+        router.push("/memes?welcome=1");
         router.refresh();
       }, 800);
       return;
@@ -133,7 +133,7 @@ export default function LoginPage() {
       setLogState("dropping");
       toast("success", "Approved!", "Account created. Add your name next.");
       // New accounts go to the profile page to add a name
-      router.push("/");
+      router.push("/memes?welcome=1");
       router.refresh();
     } else {
       setNotice(`Almost done. We sent a confirmation link to ${email}. Open it, then log in here.`);
@@ -250,7 +250,7 @@ export default function LoginPage() {
 
         </div>
         <p className="absolute inset-x-0 bottom-[3vh] text-center text-xs text-ink/60">
-          <Link href="/" className="underline">Just browsing</Link>
+          <Link href="/memes" className="underline">Just browsing</Link>
         </p>
       </section>
     </main>

@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import CaptionApp from "./caption-app";
+import HomeSwitch from "./home-switch";
 
-// The meme feed is the home page
 export const metadata: Metadata = {
   title: "At 116 & Broadway",
 };
 
 export default function Home() {
-  return <CaptionApp />;
+  return <HomeSwitch />;
 }

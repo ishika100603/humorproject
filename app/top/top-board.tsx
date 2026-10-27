@@ -38,7 +38,7 @@ function Note({ row, rank, size }: { row: Row; rank: number; size: "first" | "po
   const n = Number(row.score);
   return (
     <Link
-      href="/"
+      href="/memes"
       className={`note relative block shrink-0 transition-transform hover:-translate-y-1 ${width} ${size === "small" ? "p-1.5" : "p-2.5"}`}
       style={{ background: NOTE_COLORS[rank % NOTE_COLORS.length], transform: `rotate(${tilt}deg)` }}
     >
@@ -88,7 +88,7 @@ export default function TopBoard() {
   return (
     <main className="flex h-[100dvh] w-full flex-col overflow-hidden px-5 pt-5 sm:px-10">
       <header className="flex shrink-0 items-center justify-between">
-        <Link href="/" className="text-sm underline">
+        <Link href="/memes" className="text-sm underline">
           ← Back
         </Link>
         <Link href="/" className="hand text-sm tracking-[0.15em]">

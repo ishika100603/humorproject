@@ -52,11 +52,11 @@ export default function Landing() {
           <span className="highlight px-2 py-0.5">Vote on AI-made memes. Post your own photo and see what joke the AI makes.</span>
         </p>
         <div className="mt-[3vh] flex flex-wrap justify-center gap-3">
-          <Link href="/" className="rounded-full bg-[#141414] px-5 py-2 text-sm text-white transition-colors hover:bg-[#1d4f91]">
+          <Link href="/memes" className="rounded-full bg-[#141414] px-5 py-2 text-sm text-white transition-colors hover:bg-[#1d4f91]">
             Start voting
           </Link>
           <Link
-            href={loggedIn ? "/?post=1" : "/login"}
+            href={loggedIn ? "/memes?post=1" : "/login"}
             className="rounded-full border border-[#141414] px-5 py-2 text-sm transition-colors hover:bg-white"
           >
             Post a photo

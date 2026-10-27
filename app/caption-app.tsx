@@ -251,8 +251,10 @@ export default function CaptionApp() {
       setSoundOn(localStorage.getItem("ctc-sound") !== "off");
       const params = new URLSearchParams(window.location.search);
       if (params.has("post")) setPostOpen(true);
-      const tour = params.has("tour");
-      if (tour || !localStorage.getItem("ctc-tutorial-done")) setTutorial(true);
+      // Just logged in (or first visit): show the tutorial
+      const welcome = params.has("welcome") || params.has("tour");
+      if (welcome || !localStorage.getItem("ctc-tutorial-done")) setTutorial(true);
+      if (welcome || params.has("post")) window.history.replaceState(null, "", window.location.pathname);
     } catch {}
   }, [fetchFeed, loadLeaders, loadPoints]);
 
@@ -532,18 +534,16 @@ export default function CaptionApp() {
             <Fold title={<><Crown className="h-3.5 w-3.5" /> Your crowns{user ? `: ${mine?.points ?? 0}` : ""}</>}>
               <CrownsPanel mine={mine} loggedIn={!!user} />
             </Fold>
-            <Fold title="Updates">
-              <ul className="grid gap-1 text-xs">
-                {UPDATES.map((u, i) => (
-                  <li key={i} className="flex gap-3">
-                    <span className="w-12 shrink-0 text-ink/60">{u.date}</span>
-                    <span className="leading-snug">{u.text}</span>
-                  </li>
-                ))}
-              </ul>
+            <Fold title="About">
+              <div className="grid gap-2 text-xs leading-relaxed text-ink/80">
+                <p>At 116 &amp; Broadway is a Columbia meme board. People post photos and AI writes the captions.</p>
+                <p><b className="font-medium">Vote:</b> tap a note, then 👍 if it&apos;s funny or 👎 if not.</p>
+                <p><b className="font-medium">Crowns:</b> every vote earns 1. The top voter each week is Star of the week.</p>
+                <p><b className="font-medium">Post:</b> upload any photo and AI writes the caption. Your name isn&apos;t shown.</p>
+              </div>
             </Fold>
           </Menu>
-          <Link href="/" className="hand text-base tracking-[0.15em]">
+          <Link href="/memes" className="hand text-base tracking-[0.15em]">
             At 116 &amp; Broadway
           </Link>
         </div>
@@ -650,6 +650,7 @@ export default function CaptionApp() {
       </main>
 
       <Mascot onThrow={() => setTossed(true)} onHelp={() => setTutorial(true)} />
+      {user && <UpdatesBell />}
 
       {user && (
         <div
@@ -915,6 +916,65 @@ function VoteControl({
         className={`${btn} ${row.my_vote === -1 ? "thumb-pop text-brick" : "text-ink/50 hover:text-brick"}`}
       >
         <Thumb down filled={row.my_vote === -1} />
+      </button>
+    </div>
+  );
+}
+
+// New app updates since your last visit: a bell in the bottom right you open once
+function UpdatesBell() {
+  const KEY = "ctc-updates-seen";
+  const [fresh, setFresh] = useState<typeof UPDATES>([]);
+  const [open, setOpen] = useState(false);
+  const top = `${UPDATES[0]?.date}|${UPDATES[0]?.text}`;
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem(KEY);
+      if (seen === null) {
+        localStorage.setItem(KEY, top); // first visit: nothing is "new" yet
+        return;
+      }
+      const i = UPDATES.findIndex((u) => `${u.date}|${u.text}` === seen);
+      setFresh(i === -1 ? UPDATES.slice(0, 3) : UPDATES.slice(0, i));
+    } catch {}
+  }, [top]);
+  if (fresh.length === 0) return null;
+  const close = () => {
+    try {
+      localStorage.setItem(KEY, top);
+    } catch {}
+    setFresh([]);
+    setOpen(false);
+  };
+  return (
+    <div className="fixed bottom-6 right-28 z-40">
+      {open && (
+        <div role="dialog" aria-label="What's new" className="panel-in absolute bottom-12 right-0 w-64 rounded-lg border border-ink/15 bg-white p-4 shadow-md">
+          <p className="text-sm font-medium">New since your last visit</p>
+          <ul className="mt-2 grid gap-1.5 text-xs leading-snug">
+            {fresh.map((u, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="w-11 shrink-0 text-ink/50">{u.date}</span>
+                <span>{u.text}</span>
+              </li>
+            ))}
+          </ul>
+          <button onClick={close} className="mt-3 rounded-full bg-ink px-3 py-1 text-xs text-white hover:bg-teal">
+            Got it
+          </button>
+        </div>
+      )}
+      <button
+        onClick={() => (open ? close() : setOpen(true))}
+        aria-label={`${fresh.length} new ${fresh.length === 1 ? "update" : "updates"}`}
+        className="relative flex h-10 w-10 items-center justify-center rounded-full border border-ink/25 bg-white shadow-sm hover:bg-tile-face"
+      >
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="#141414" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16zM10 20a2 2 0 0 0 4 0" />
+        </svg>
+        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brick px-1 text-[10px] text-white">
+          {fresh.length}
+        </span>
       </button>
     </div>
   );

@@ -38,9 +38,6 @@ export default function Tutorial({ onClose }: { onClose: () => void }) {
       aria-modal="true"
       aria-labelledby="tutorial-title"
     >
-      <button onClick={onClose} className="absolute left-5 top-5 text-sm underline sm:left-8 sm:top-6">
-        ← Back
-      </button>
       <div className="w-full max-w-sm rounded-lg border border-ink/20 bg-white px-7 py-6 shadow-sm">
         <p className="text-xs text-ink/50">
           {step + 1} of {STEPS.length}
@@ -51,32 +48,33 @@ export default function Tutorial({ onClose }: { onClose: () => void }) {
         <p className="mt-2 text-sm leading-relaxed text-ink/80">{s.body}</p>
 
         <div className="mt-6 flex items-center justify-between gap-3">
+          <button onClick={onClose} className="text-sm text-ink/60 underline hover:text-ink">
+            Skip
+          </button>
           <div className="flex gap-1.5" aria-hidden="true">
             {STEPS.map((_, i) => (
               <span key={i} className={`h-1.5 w-1.5 rounded-full ${i === step ? "bg-ink" : "bg-ink/20"}`} />
             ))}
           </div>
           <div className="flex gap-2">
-            {step > 0 && (
-              <button onClick={() => setStep(step - 1)} className="rounded-full px-3 py-1.5 text-sm hover:bg-ink/5">
-                Back
-              </button>
-            )}
+            <button
+              onClick={() => setStep(step - 1)}
+              disabled={step === 0}
+              aria-label="Previous"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-ink/25 text-lg leading-none hover:bg-ink/5 disabled:opacity-25"
+            >
+              ‹
+            </button>
             <button
               autoFocus
               onClick={() => (last ? onClose() : setStep(step + 1))}
-              className="rounded-full bg-ink px-4 py-1.5 text-sm text-white hover:bg-teal"
+              aria-label={last ? "Start" : "Next"}
+              className="flex h-9 min-w-9 items-center justify-center rounded-full bg-ink px-3 text-lg leading-none text-white hover:bg-teal"
             >
-              {last ? "Let's go" : "Next"}
+              {last ? <span className="text-sm">Start</span> : "›"}
             </button>
           </div>
         </div>
-        <p className="mt-4 text-center text-[11px] text-ink/40">
-          ← → to move · Esc to{" "}
-          <button onClick={onClose} className="underline hover:text-ink">
-            skip
-          </button>
-        </p>
       </div>
     </div>
   );
