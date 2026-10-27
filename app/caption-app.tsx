@@ -1268,32 +1268,31 @@ const WAIT_JOKES = [
 function WaitJokes() {
   const [open, setOpen] = useState(false);
   return (
-    <div
-      className="relative mt-3 flex justify-center"
-      onMouseMove={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        onBlur={() => setOpen(false)}
-        aria-expanded={open}
-        className="rounded-full border border-ink/30 bg-white/70 px-3 py-1 text-xs hover:bg-white"
-      >
-        While you wait: 3 jokes
-      </button>
-      {open && (
-        <ul
-          role="tooltip"
-          className="pop absolute top-full z-10 mt-2 grid w-[min(300px,80vw)] divide-y divide-ink/10 rounded-md border border-ink/20 bg-white p-3 text-left text-xs leading-snug shadow-md"
+    <div className="mt-3 flex justify-center">
+      {/* Opens to the side of the chip, growing upward, so all 3 jokes stay on screen (above it on phones) */}
+      <span className="relative inline-block" onMouseMove={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          onBlur={() => setOpen(false)}
+          aria-expanded={open}
+          className="rounded-full border border-ink/30 bg-white/70 px-3 py-1 text-xs hover:bg-white"
         >
-          {WAIT_JOKES.map(([setup, punch], i) => (
-            <li key={i} className="py-1.5 first:pt-0 last:pb-0">
-              {setup} <span className="text-teal">{punch}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+          While you wait: 3 jokes
+        </button>
+        {open && (
+          <ul
+            role="tooltip"
+            className="pop absolute bottom-full left-1/2 z-20 -ml-[130px] mb-2 grid w-[260px] divide-y sm:bottom-0 sm:left-full sm:mb-0 sm:ml-3 sm:w-[280px] divide-ink/10 rounded-md border border-ink/20 bg-white p-3 text-left text-xs leading-snug shadow-md"
+          >
+            {WAIT_JOKES.map(([setup, punch], i) => (
+              <li key={i} className="py-1.5 first:pt-0 last:pb-0">
+                {setup} <span className="text-teal">{punch}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </span>
     </div>
   );
 }
