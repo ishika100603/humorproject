@@ -1,6 +1,7 @@
 "use client";
 
 import EscBack from "../esc-back";
+import SiteBar from "../site-bar";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -179,9 +180,11 @@ export default function ProfilePage() {
   const shown = [profile.first_name, profile.last_name ? `${profile.last_name[0]}.` : ""].filter(Boolean).join(" ");
 
   return (
-    <main className="grid min-h-[100dvh] w-full lg:h-[100dvh] lg:grid-cols-2 lg:overflow-hidden">
+    <>
+    <SiteBar />
+    <main className="grid min-h-[calc(100dvh-60px)] w-full lg:h-[calc(100dvh-60px)] lg:grid-cols-2 lg:overflow-hidden">
       <section className="relative flex flex-col items-center justify-center px-8 pb-[3vh] pt-[9vh] text-center lg:py-[8vh]">
-        <Link href="/memes" className="absolute left-6 top-6 text-sm underline lg:left-10">
+        <Link href="/memes" className="absolute left-6 top-4 text-sm underline lg:left-10">
           ← Back
         </Link>
         <EscBack href="/memes" />
@@ -281,5 +284,6 @@ export default function ProfilePage() {
         </div>
       </section>
     </main>
+    </>
   );
 }

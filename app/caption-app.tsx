@@ -41,8 +41,9 @@ type Star = {
 
 const BONUS_DAYS = 15;
 
-// One sticky note per photo. The order is by date, so voting never moves notes.
-type Slot = { url: string; ids: number[]; newest: string };
+// One sticky note per caption. A photo posted with 2 or 3 captions gets one card
+// for each, so every caption is voted on by itself.
+type Slot = { key: string; url: string; ids: number[]; newest: string };
 
 const NOTE_COLORS = ["#f6eebc", "#f3e9b0", "#f8f1c8", "#efe4a6"];
 
@@ -64,6 +65,8 @@ export function showInFeed(slot: { ids: number[]; newest: string }) {
   return slot.ids.length === 1 || slot.newest >= MULTI_CAPTION_SINCE;
 }
 
+const rs_created = (rows: FeedRow[], id: number) => rows.find((r) => r.id === id)?.created_at;
+
 function buildSlots(rows: FeedRow[]): Slot[] {
   const groups = new Map<string, FeedRow[]>();
   for (const r of rows) groups.set(r.image_url, [...(groups.get(r.image_url) ?? []), r]);
@@ -73,6 +76,10 @@ function buildSlots(rows: FeedRow[]): Slot[] {
       ids: rs.sort((a, b) => a.id - b.id).map((r) => r.id),
       newest: rs.reduce((m, r) => (r.created_at > m ? r.created_at : m), ""),
     }))
+    .filter(showInFeed)
+    .flatMap((g) =>
+      g.ids.map((id) => ({ key: `${g.url}#${id}`, url: g.url, ids: [id], newest: rs_created(rows, id) ?? g.newest }))
+    )
     .sort((a, b) => b.newest.localeCompare(a.newest));
 }
 
@@ -396,7 +403,7 @@ export default function CaptionApp() {
   useEffect(() => {
     if (greeted.current || loading || seenAtLoad.size === 0) return;
     greeted.current = true;
-    const unseen = buildSlots(rows).filter((s) => showInFeed(s) && s.ids.some((id) => !seenAtLoad.has(id))).length;
+    const unseen = buildSlots(rows).filter((s) => s.ids.some((id) => !seenAtLoad.has(id))).length;
     if (unseen > 0) setFreshCount(unseen);
   }, [loading, rows, seenAtLoad]);
 
@@ -470,7 +477,8 @@ export default function CaptionApp() {
   };
 
   // ---------- what to show ----------
-  const unsorted = useMemo(() => buildSlots(rows).filter(showInFeed), [rows]);
+  const unsorted = useMemo(() => buildSlots(rows), [rows]);
+  const feedIds = useMemo(() => new Set(unsorted.flatMap((s) => s.ids)), [unsorted]);
 
   // Notes are ordered by likes, but the order is a snapshot: it is taken when the
   // feed loads and again when you close a note, never while you are voting.
@@ -480,14 +488,14 @@ export default function CaptionApp() {
     [rowById]
   );
   const resort = useCallback(
-    () => setLikeOrder(new Map(unsorted.map((slot) => [slot.url, scoreOf(slot)]))),
+    () => setLikeOrder(new Map(unsorted.map((slot) => [slot.key, scoreOf(slot)]))),
     [unsorted, scoreOf]
   );
   useEffect(() => {
     if (likeOrder === null && !loading && unsorted.length) resort();
   }, [likeOrder, loading, unsorted.length, resort]);
   const slots = useMemo(() => {
-    const rank = (slot: Slot) => likeOrder?.get(slot.url) ?? Number.MAX_SAFE_INTEGER; // brand-new notes go first
+    const rank = (slot: Slot) => likeOrder?.get(slot.key) ?? Number.MAX_SAFE_INTEGER; // brand-new notes go first
     return [...unsorted].sort(
       (a, b) =>
         weekStart(b.newest).getTime() - weekStart(a.newest).getTime() ||
@@ -499,7 +507,9 @@ export default function CaptionApp() {
   const isNew = (slot: Slot) => slot.ids.some((id) => !seenAtLoad.has(id) || arrivedIds.has(id));
   const newSlots = slots.filter(isNew);
   const seenSlots = slots.filter((s) => !isNew(s));
-  const visible = showSeen ? slots : newSlots;
+  // Caught up? This week's and last week's notes still show, so the feed is never empty
+  const recentFrom = now === null ? 0 : weekStart(new Date(now)).getTime() - 7 * 864e5;
+  const visible = showSeen ? slots : slots.filter((s) => isNew(s) || weekStart(s.newest).getTime() >= recentFrom);
 
   // Group the visible notes by week, newest week first
   const weeks = useMemo(() => {
@@ -529,9 +539,27 @@ export default function CaptionApp() {
         <SidePanel onClose={() => setBoardOpen(false)} title="Leaderboard">
           <StarPanel star={star} loggedIn={!!user} daysLeft={now === null ? 7 : daysUntilMonday(now)} />
           <Rankboard peers={peers} />
-          <Link href="/top" className="flex items-center justify-between rounded-md border border-ink/20 px-3 py-2 text-sm hover:bg-white">
-            Top captions <span aria-hidden>→</span>
-          </Link>
+          <div>
+            <p className="text-sm font-medium">Top captions</p>
+            <ol className="mt-2 grid gap-2">
+              {rows
+                .filter((r) => feedIds.has(r.id))
+                .sort((a, b) => Number(b.score) - Number(a.score))
+                .slice(0, 5)
+                .map((r, i) => (
+                  <li key={r.id} className="flex items-center gap-2 text-sm">
+                    <span className="w-4 text-xs text-ink/50">{i + 1}</span>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={r.image_url} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
+                    <span className="flex-1 leading-snug">{r.caption}</span>
+                    <span className="text-xs text-teal">{Number(r.score) > 0 ? `+${r.score}` : r.score}</span>
+                  </li>
+                ))}
+            </ol>
+            <Link href="/top" className="mt-2 inline-block text-xs underline">
+              See all top captions
+            </Link>
+          </div>
         </SidePanel>
       )}
       {freshCount > 0 && (
@@ -542,7 +570,7 @@ export default function CaptionApp() {
         />
       )}
 
-      <header className="mx-auto flex w-full max-w-[1680px] items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-10">
+      <header className="sticky top-0 z-40 mx-auto flex w-full max-w-[1680px] items-center justify-between gap-4 bg-tile/90 px-4 py-3 backdrop-blur sm:px-6 lg:px-10">
         <div className="flex items-center gap-3">
           <Menu open={menuOpen} onOpenChange={setMenuOpen}>
             <Fold title={<><Crown className="h-3.5 w-3.5" /> Your crowns{user ? `: ${mine?.points ?? 0}` : ""}</>}>
@@ -628,13 +656,14 @@ export default function CaptionApp() {
               <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
                 {w.items.map(({ slot, index }) => (
                   <NoteCard
-                    key={slot.url}
+                    key={slot.key}
                     tossed={tossed}
                     slot={slot}
                     index={index}
                     rowById={rowById}
                     isArrived={slot.ids.some((id) => arrivedIds.has(id))}
                     onOpen={openNote}
+                    onVote={vote}
                     trackSeen={trackSeen}
                   />
                 ))}
@@ -646,16 +675,8 @@ export default function CaptionApp() {
 
           {!loading && (
             <CaughtUp
-              immediate={visible.length === 0}
-              hasNew={newSlots.length > 0}
               showSeen={showSeen}
-              seenCount={seenSlots.length}
-              countdown={countdown}
-              mondayIn={now === null ? 7 : daysUntilMonday(now)}
-              lastPost={
-                now === null || slots.length === 0 ? "" : timeAgo(now - new Date(slots[0].newest).getTime())
-              }
-              loggedIn={!!user}
+              olderCount={slots.length - visible.length}
               onToggleSeen={() => {
                 playSound("tap");
                 setShowSeen(!showSeen);
@@ -742,6 +763,7 @@ function NoteCard({
   rowById,
   isArrived,
   onOpen,
+  onVote,
   trackSeen,
 }: {
   tossed: boolean;
@@ -750,18 +772,17 @@ function NoteCard({
   rowById: Map<number, FeedRow>;
   isArrived: boolean;
   onOpen: (index: number) => void;
+  onVote: (row: FeedRow, value: 1 | -1) => void;
   trackSeen: (el: HTMLElement | null) => void;
 }) {
   const captions = slot.ids.map((id) => rowById.get(id)).filter(Boolean) as FeedRow[];
   if (captions.length === 0) return null;
   const best = [...captions].sort((a, b) => Number(b.score) - Number(a.score))[0];
-  const total = captions.reduce((n, c) => n + Number(c.score), 0);
   const tilt = ((index * 37) % 5) - 2;
   return (
-    <button
+    <div
       ref={trackSeen}
       data-caption-ids={slot.ids.join(",")}
-      onClick={() => onOpen(index)}
       className={`note group flex flex-col p-3 text-left transition-transform hover:-translate-y-1 hover:rotate-0 ${isArrived ? "arrive" : ""} ${
         tossed ? "drop-in" : "opacity-0"
       }`}
@@ -770,15 +791,19 @@ function NoteCard({
         transform: `rotate(${tilt}deg)`,
         animationDelay: `${Math.min(index, 20) * 45}ms`,
       }}
-      aria-label={`Open note: ${best.caption}`}
     >
-      <img src={slot.url} alt="" loading="lazy" className="aspect-square w-full object-cover" />
-      <p className="mt-2 text-sm leading-snug">{best.caption}</p>
-      <p className="mt-auto pt-2 text-xs text-ink/60">
-        {total > 0 ? `+${total}` : total} · {new Date(slot.newest).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-        {captions.length > 1 && ` · ${captions.length} captions`}
-      </p>
-    </button>
+      <button onClick={() => onOpen(index)} className="flex flex-1 flex-col text-left" aria-label={`Open note: ${best.caption}`}>
+        <img src={slot.url} alt="" loading="lazy" className="aspect-square w-full object-cover" />
+        <p className="mt-2 text-sm leading-snug">{best.caption}</p>
+      </button>
+      {/* Vote right on the card, no need to open it */}
+      <div className="mt-auto flex items-center justify-between pt-1">
+        <span className="text-xs text-ink/60">
+          {new Date(slot.newest).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+        </span>
+        <VoteControl row={best} onVote={onVote} />
+      </div>
+    </div>
   );
 }
 
@@ -838,7 +863,7 @@ function Lightbox({
       </button>
 
       <div
-        key={slot.url}
+        key={slot.key}
         className={`note note-open min-w-[200px] p-4 ${captions.length > 1 ? "w-[min(280px,calc(100vw-8rem),calc(100dvh-24rem))]" : "w-[min(300px,calc(100vw-8rem),calc(100dvh-15rem))]"}`}
         style={{ background: NOTE_COLORS[index % NOTE_COLORS.length] }}
         onClick={(e) => e.stopPropagation()}
@@ -1206,54 +1231,21 @@ function Rankboard({ peers }: { peers: Peer[] }) {
 }
 
 function CaughtUp({
-  immediate,
-  hasNew,
   showSeen,
-  seenCount,
-  mondayIn,
-  lastPost,
-  loggedIn,
+  olderCount,
   onToggleSeen,
 }: {
-  immediate: boolean;
-  hasNew: boolean;
   showSeen: boolean;
-  seenCount: number;
-  countdown: string;
-  mondayIn: number;
-  lastPost: string;
-  loggedIn: boolean;
+  olderCount: number;
   onToggleSeen: () => void;
 }) {
-  // Only appears once you scroll down to it
-  const ref = useRef<HTMLDivElement>(null);
-  const [seen, setSeen] = useState(immediate);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (immediate) return setSeen(true);
-    const io = new IntersectionObserver(([e]) => e.isIntersecting && setSeen(true), { threshold: 0.4 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [immediate]);
-
+  // No "all caught up" note: this week and last week always show, older weeks on request
+  if (olderCount === 0 && !showSeen) return null;
   return (
-    <div ref={ref} className={`mt-12 flex justify-center transition-all duration-700 ${seen ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"}`}>
-      <div className="note w-[min(420px,100%)] rotate-1 p-6 text-center" style={{ background: NOTE_COLORS[2] }}>
-        <p className="hand text-xl tracking-[0.1em]">
-          {showSeen ? "That's every note" : hasNew ? "You're all caught up" : "Nothing new since your last visit"}
-        </p>
-        <p className="mt-2 text-sm leading-relaxed">
-          {lastPost && <>Last new note: {lastPost}. </>}
-          New ones show up whenever someone posts a photo. Star of the week is picked in {mondayIn}{" "}
-          {mondayIn === 1 ? "day" : "days"}.
-        </p>
-        {seenCount > 0 && (
-          <button onClick={onToggleSeen} className="mt-3 text-sm underline">
-            {showSeen ? "Hide notes you've seen" : `Show notes you've seen (${seenCount})`}
-          </button>
-        )}
-      </div>
+    <div className="mt-12 flex justify-center">
+      <button onClick={onToggleSeen} className="rounded-full border border-ink/30 bg-white/70 px-5 py-2 text-sm hover:bg-white">
+        {showSeen ? "Show only the last two weeks" : `Show older memes (${olderCount})`}
+      </button>
     </div>
   );
 }
@@ -1465,15 +1457,16 @@ function CreateCaptions({
 
   return (
     <form ref={formRef} onSubmit={generate} className="note p-4" style={{ background: "#f8f1c8" }}>
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm">Caption a photo</h2>
-
+      <div className="mb-3">
+        <h2 className="text-base font-medium">Post a photo</h2>
+        {!working && <p className="text-xs text-ink/60">AI writes the caption. Your name isn&apos;t shown.</p>}
       </div>
 
+      {!working && <p className="mb-1 text-xs font-medium text-ink/70">1. Photo</p>}
       <label
         className={`flex items-center gap-3 rounded-md border border-dashed p-2 text-sm transition-colors ${
-          dragging ? "border-teal bg-white" : "border-transparent"
-        } ${working ? "opacity-50" : "cursor-pointer hover:border-ink/30"}`}
+          dragging ? "border-teal bg-white" : "border-ink/30 bg-white/40"
+        } ${working ? "opacity-50" : "cursor-pointer hover:border-ink/60"}`}
         onDragOver={(e) => {
           if (working) return;
           e.preventDefault();
@@ -1513,8 +1506,8 @@ function CreateCaptions({
       </label>
 
       {!working && (
-        <div className="mt-3 flex items-center justify-between text-sm">
-          <span className="text-ink/70">How many captions?</span>
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <span className="text-xs font-medium text-ink/70">2. How many captions?</span>
           <div role="radiogroup" aria-label="How many captions" className="flex overflow-hidden rounded-full border border-ink/30">
             {[1, 2, 3].map((n) => (
               <button
@@ -1532,13 +1525,16 @@ function CreateCaptions({
         </div>
       )}
       {!working && (
-        <input
-          value={angle}
-          onChange={(e) => setAngle(e.target.value)}
-          placeholder="Optional hint, like “midterm week”"
-          maxLength={200}
-          className="mt-3 w-full rounded-md border border-ink/20 bg-white/70 px-3 py-2 text-sm focus:border-teal"
-        />
+        <label className="mt-4 block">
+          <span className="text-xs font-medium text-ink/70">3. Hint for the AI (optional)</span>
+          <input
+            value={angle}
+            onChange={(e) => setAngle(e.target.value)}
+            placeholder="Like “midterm week”"
+            maxLength={200}
+            className="mt-1 w-full rounded-md border border-ink/20 bg-white/70 px-3 py-2 text-sm focus:border-teal"
+          />
+        </label>
       )}
 
       {working ? (
@@ -1575,16 +1571,14 @@ function CreateCaptions({
       ) : (
         <button
           disabled={!file}
-          className="mt-3 w-full rounded-md bg-ink px-4 py-2.5 text-sm text-white hover:bg-teal disabled:opacity-30"
+          className="mt-5 w-full rounded-md bg-ink px-4 py-2.5 text-sm text-white hover:bg-teal disabled:opacity-30"
         >
           {phase === "error" ? "Try again" : count === 1 ? "Generate caption" : `Generate ${count} captions`}
         </button>
       )}
 
-      {!working && !message && (
-        <p className="mt-2 text-sm text-ink/70">
-          {count === 1 ? "One caption" : `${count} captions`}, posted without your name.
-        </p>
+      {!working && !message && count > 1 && (
+        <p className="mt-2 text-center text-xs text-ink/60">Each caption gets its own card in the feed.</p>
       )}
       {message && (
         <p

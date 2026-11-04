@@ -1,6 +1,7 @@
 "use client";
 
 import EscBack from "../esc-back";
+import SiteBar from "../site-bar";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -87,16 +88,15 @@ export default function TopBoard() {
   const order = [1, 0, 2].filter((i) => podium[i]);
 
   return (
-    <main className="flex h-[100dvh] w-full flex-col overflow-hidden px-5 pt-5 sm:px-10">
-      <header className="flex shrink-0 items-center justify-between">
+    <>
+    <SiteBar />
+    <main className="flex h-[calc(100dvh-60px)] w-full flex-col overflow-hidden px-5 pt-3 sm:px-10">
+      <div className="flex shrink-0 items-center justify-between">
         <Link href="/memes" className="text-sm underline">
           ← Back
         </Link>
         <EscBack href="/memes" />
-        <Link href="/" className="hand text-sm tracking-[0.15em]">
-          At 116 &amp; Broadway
-        </Link>
-      </header>
+      </div>
 
       <h1 className="hand mt-[2vh] shrink-0 text-center text-[clamp(22px,4.5vh,36px)] tracking-[0.15em]">
         Top captions
@@ -129,5 +129,6 @@ export default function TopBoard() {
         </div>
       )}
     </main>
+    </>
   );
 }

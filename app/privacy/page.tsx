@@ -1,4 +1,5 @@
 import EscBack from "../esc-back";
+import SiteBar from "../site-bar";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -39,9 +40,11 @@ const SECTIONS = [
 
 export default function PrivacyPage() {
   return (
-    <main className="grid min-h-[100dvh] w-full lg:h-[100dvh] lg:grid-cols-[2fr_3fr] lg:overflow-hidden">
+    <>
+    <SiteBar />
+    <main className="grid min-h-[calc(100dvh-60px)] w-full lg:h-[calc(100dvh-60px)] lg:grid-cols-[2fr_3fr] lg:overflow-hidden">
       <section className="relative flex flex-col justify-center px-6 pb-[2vh] pt-[8vh] lg:px-[5vw] lg:py-[8vh]">
-        <Link href="/memes" className="absolute left-6 top-6 text-sm underline lg:left-10">
+        <Link href="/memes" className="absolute left-6 top-4 text-sm underline lg:left-10">
           ← Back
         </Link>
         <EscBack href="/memes" />
@@ -67,5 +70,6 @@ export default function PrivacyPage() {
         </div>
       </section>
     </main>
+    </>
   );
 }

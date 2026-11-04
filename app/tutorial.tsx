@@ -33,7 +33,7 @@ export default function Tutorial({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="lightbox fixed inset-0 z-50 flex items-center justify-center bg-[#b9d9eb]/85 p-6 backdrop-blur-sm"
+      className="lightbox fixed inset-x-0 bottom-0 top-[60px] z-30 flex items-center justify-center bg-[#b9d9eb]/85 p-6 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="tutorial-title"
