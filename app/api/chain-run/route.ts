@@ -199,8 +199,9 @@ export async function POST(request: Request) {
   const captions = parseCaptions(lastOutput);
   const model = outputs[outputs.length - 1]?.model ?? null;
   let saved = 0;
+  let publishError: string | null = null;
   if (publish && captions.length) {
-    const { data } = await supabase
+    const { data, error: insertError } = await supabase
       .from("captions")
       .insert(
         captions.map((caption) => ({
@@ -215,8 +216,15 @@ export async function POST(request: Request) {
       )
       .select("id");
     saved = data?.length ?? 0;
+    if (insertError) {
+      publishError = insertError.message;
+      console.error("chain-run: couldn't post captions", insertError);
+    }
   }
   await finish({ status: captions.length ? "done" : "failed", model_used: model, caption_count: captions.length, captions_created: saved, error: captions.length ? null : "The last step returned no captions." });
 
-  return NextResponse.json({ request_id: requestId, outputs, captions, published: saved }, { headers });
+  return NextResponse.json(
+    { request_id: requestId, outputs, captions, published: saved, publish_requested: publish, publish_error: publishError },
+    { headers }
+  );
 }
