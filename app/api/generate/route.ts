@@ -133,7 +133,7 @@ export async function POST(request: Request) {
   const finish = async (fields: Record<string, unknown>) => {
     if (requestId) await supabase.from("caption_requests").update({ finished_at: new Date().toISOString(), ...fields }).eq("id", requestId);
   };
-  const logResponse = async (row: { model_key: string; http_status?: number; latency_ms: number; response_text?: string; error?: string }) => {
+  const logResponse = async (row: { model_key: string; http_status?: number; latency_ms: number; response_text?: string; error?: string; prompt_tokens?: number; output_tokens?: number; total_tokens?: number }) => {
     if (requestId) {
       const { error } = await supabase.from("llm_responses").insert({ request_id: requestId, ...row, response_text: row.response_text?.slice(0, 4000) });
       if (error) console.error("Couldn't log LLM response", error.message);
@@ -174,7 +174,16 @@ export async function POST(request: Request) {
           .trim()
           .replace(/^```(?:json)?\s*|\s*```$/g, "");
         usedModel = model.key;
-        await logResponse({ model_key: model.key, http_status: res.status, latency_ms: Date.now() - started, response_text: geminiText });
+        const u = json?.usageMetadata ?? {};
+        await logResponse({
+          model_key: model.key,
+          http_status: res.status,
+          latency_ms: Date.now() - started,
+          response_text: geminiText,
+          prompt_tokens: u.promptTokenCount,
+          output_tokens: (u.candidatesTokenCount ?? 0) + (u.thoughtsTokenCount ?? 0) || undefined,
+          total_tokens: u.totalTokenCount,
+        });
         break;
       }
       lastStatus = res.status;

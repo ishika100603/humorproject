@@ -152,6 +152,9 @@ export async function POST(request: Request) {
               http_status: res.status,
               latency_ms: ms,
               response_text: `Step ${step.step_order} · ${step.title}\n${out}`.slice(0, 4000),
+              prompt_tokens: json?.usageMetadata?.promptTokenCount,
+              output_tokens: (json?.usageMetadata?.candidatesTokenCount ?? 0) + (json?.usageMetadata?.thoughtsTokenCount ?? 0) || undefined,
+              total_tokens: json?.usageMetadata?.totalTokenCount,
             });
           outputs.push({ step_order: step.step_order, title: step.title, model: model.key, ms, output: out });
           previous = out;
