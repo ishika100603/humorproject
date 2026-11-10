@@ -76,7 +76,7 @@ export async function POST(request: Request) {
 
   const [chainQ, stepsQ, modelsQ] = await Promise.all([
     supabase.from("prompt_chains").select("id, name").eq("id", chainId).maybeSingle(),
-    supabase.from("prompt_chain_steps").select("step_order, title, prompt_text").eq("chain_id", chainId).order("step_order"),
+    supabase.from("prompt_chain_steps").select("step_order, title, prompt_text, model_key").eq("chain_id", chainId).order("step_order"),
     supabase
       .from("llm_models")
       .select("model_key, temperature, llm_providers!inner(slug, is_active)")
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       .order("priority"),
   ]);
   if (!chainQ.data) return fail("That prompt chain doesn't exist.");
-  const steps = (stepsQ.data ?? []) as { step_order: number; title: string; prompt_text: string }[];
+  const steps = (stepsQ.data ?? []) as { step_order: number; title: string; prompt_text: string; model_key: string | null }[];
   if (!steps.length) return fail("This chain has no steps yet. Add at least one.");
   const models = ((modelsQ.data ?? []) as { model_key: string; temperature: number }[]).map((m) => ({
     key: m.model_key,
@@ -135,8 +135,12 @@ export async function POST(request: Request) {
     if (isLast) text += "\n\nFormat: put each caption on its own line, with no numbering, quotes or extra commentary.";
     const parts = i === 0 ? [{ inline_data: { mime_type: image.mime, data: image.data } }, { text }] : [{ text }];
 
+    // A step can pick its own model; the usual order is the fallback
+    const picked = step.model_key ? models.find((m) => m.key === step.model_key) ?? { key: step.model_key, temperature: 1 } : null;
+    const order = picked ? [picked, ...models.filter((m) => m.key !== picked.key)] : models;
+
     let done = false;
-    for (const model of models) {
+    for (const model of order) {
       const left = deadline - Date.now();
       if (left < 3_000) break;
       const started = Date.now();
